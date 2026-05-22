@@ -753,8 +753,8 @@ document.addEventListener('mousemove', e => {
 document.addEventListener('keydown', e => {
   if (!pdfDoc) return;
   if (e.target === document.getElementById('searchInput')) return;
-  if (e.key === 'ArrowRight') { showControls(); scheduleHide(); goToSpread(currentSpread + 2, 'forward'); }
-  if (e.key === 'ArrowLeft' && currentSpread > 0) { showControls(); scheduleHide(); goToSpread(currentSpread - 2, 'backward'); }
+  if (e.key === 'ArrowRight') { goToSpread(currentSpread + 2, 'forward'); }
+  if (e.key === 'ArrowLeft' && currentSpread > 0) { goToSpread(currentSpread - 2, 'backward'); }
   if (e.key === 'f' || e.key === 'F') document.getElementById('searchInput').focus();
   if (e.key === ' ') { e.preventDefault(); toggleTTS(); }
   if (e.key === 'Escape') { closeSearch(); hideControls(); }
@@ -881,13 +881,13 @@ function buildThumbs() {
 }
 
 // ── CONTROLS ──
-document.getElementById('prevBtn').addEventListener('click', () => { showControls(); scheduleHide(); goToSpread(currentSpread - 2, 'backward'); });
-document.getElementById('nextBtn').addEventListener('click', () => { showControls(); scheduleHide(); goToSpread(currentSpread + 2, 'forward'); });
-document.getElementById('firstBtn').addEventListener('click', () => { showControls(); scheduleHide(); goToSpread(0, 'backward'); });
-document.getElementById('lastBtn').addEventListener('click', () => { showControls(); scheduleHide(); goToSpread(totalPages % 2 === 0 ? totalPages - 2 : totalPages - 1, 'forward'); });
+document.getElementById('prevBtn').addEventListener('click', () => { goToSpread(currentSpread - 2, 'backward'); });
+document.getElementById('nextBtn').addEventListener('click', () => { goToSpread(currentSpread + 2, 'forward'); });
+document.getElementById('firstBtn').addEventListener('click', () => { goToSpread(0, 'backward'); });
+document.getElementById('lastBtn').addEventListener('click', () => { goToSpread(totalPages % 2 === 0 ? totalPages - 2 : totalPages - 1, 'forward'); });
 document.getElementById('pageSlider').addEventListener('input', e => { showControls(); scheduleHide(); goToSpread(parseInt(e.target.value)); });
-document.getElementById('rightHalf').addEventListener('click', () => { if (!isFlipping) { showControls(); scheduleHide(); goToSpread(currentSpread + 2, 'forward'); } });
-document.getElementById('leftHalf').addEventListener('click', () => { if (!isFlipping && currentSpread > 0) { showControls(); scheduleHide(); goToSpread(currentSpread - 2, 'backward'); } });
+document.getElementById('rightHalf').addEventListener('click', () => { if (!isFlipping) goToSpread(currentSpread + 2, 'forward'); });
+document.getElementById('leftHalf').addEventListener('click', () => { if (!isFlipping && currentSpread > 0) goToSpread(currentSpread - 2, 'backward'); });
 
 // ── TEXT-TO-SPEECH ──
 let ttsSpeaking = false;
