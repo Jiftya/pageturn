@@ -30,6 +30,7 @@ header.hidden-ui { opacity: 0; pointer-events: none; transform: translateY(-8px)
   display: flex; align-items: center; gap: 8px; background: var(--surface);
   border: 1px solid var(--border); border-radius: 40px; padding: 6px 16px;
   width: 260px; transition: border-color 0.2s, box-shadow 0.2s;
+  position: relative;
 }
 .search-wrap:focus-within { border-color: var(--accent); box-shadow: 0 0 0 3px rgba(200,169,110,0.12); }
 .search-wrap svg { color: var(--muted); flex-shrink: 0; }
@@ -190,19 +191,26 @@ kbd { display: inline-block; background: rgba(255,255,255,0.06); border: 1px sol
 .thumb canvas { width: 100% !important; height: 100% !important; }
 .thumb-num { position: absolute; bottom: 2px; right: 3px; font-size: 8px; color: rgba(255,255,255,0.55); }
 
-/* Search overlay */
-#searchOverlay { display: none; position: fixed; inset: 0; background: rgba(10,9,8,0.93); backdrop-filter: blur(8px); z-index: 200; overflow-y: auto; padding: 2rem; }
-.search-results-header { font-family: 'Playfair Display', serif; font-size: 1.3rem; margin-bottom: 1.5rem; }
-.search-results-header span { color: var(--accent); }
-.result-item { background: var(--surface); border: 1px solid var(--border); border-radius: 12px; padding: 1rem 1.25rem; margin-bottom: 10px; cursor: pointer; transition: border-color 0.2s; max-width: 680px; margin-left: auto; margin-right: auto; }
-.result-item:hover { border-color: var(--accent); background: rgba(200,169,110,0.04); }
-.result-page { font-size: 0.75rem; color: var(--accent); font-weight: 500; margin-bottom: 4px; }
-.result-text { font-size: 0.87rem; color: var(--muted); line-height: 1.6; }
-.result-text mark { background: rgba(200,169,110,0.25); color: var(--accent2); padding: 1px 2px; border-radius: 2px; }
-.no-results { color: var(--muted); text-align: center; padding: 3rem; font-size: 0.9rem; }
-.search-close-area { position: sticky; top: 0; display: flex; justify-content: flex-end; margin-bottom: 1rem; }
-.close-search { width: 40px; height: 40px; border-radius: 50%; background: var(--surface); border: 1px solid var(--border); color: var(--text); cursor: pointer; display: flex; align-items: center; justify-content: center; transition: border-color 0.2s; }
-.close-search:hover { border-color: var(--accent); color: var(--accent); }
+/* Search dropdown */
+#searchDropdown {
+  display: none; position: absolute; top: calc(100% + 6px); left: 0; right: 0;
+  background: rgba(20,18,16,0.97); backdrop-filter: blur(12px);
+  border: 1px solid var(--border); border-radius: 10px;
+  z-index: 300; max-height: 320px; overflow-y: auto;
+  box-shadow: 0 8px 32px rgba(0,0,0,0.5);
+}
+#searchDropdown.open { display: block; }
+.sd-item {
+  padding: 8px 14px; cursor: pointer; border-bottom: 1px solid rgba(255,255,255,0.04);
+  display: flex; align-items: baseline; gap: 10px;
+  transition: background 0.12s;
+}
+.sd-item:last-child { border-bottom: none; }
+.sd-item:hover, .sd-item.sd-active { background: rgba(200,169,110,0.1); }
+.sd-page { font-size: 0.72rem; color: var(--accent); font-weight: 600; white-space: nowrap; flex-shrink: 0; }
+.sd-snippet { font-size: 0.82rem; color: var(--muted); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.sd-snippet mark { background: rgba(200,169,110,0.3); color: var(--accent2); border-radius: 2px; padding: 0 1px; font-style: normal; }
+.sd-empty { padding: 14px; text-align: center; font-size: 0.84rem; color: var(--muted); }
 
 /* TTS chip */
 #ttsChip {
@@ -261,6 +269,7 @@ kbd { display: inline-block; background: rgba(255,255,255,0.06); border: 1px sol
   <div class="search-wrap" id="searchWrap" style="display:none;">
     <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="8"/><path d="m21 21-4.35-4.35"/></svg>
     <input type="text" id="searchInput" placeholder="Search in document…">
+    <div id="searchDropdown"></div>
   </div>
   <div class="header-right">
     <span id="pageInfo"></span>
@@ -404,18 +413,7 @@ kbd { display: inline-block; background: rgba(255,255,255,0.06); border: 1px sol
   </div>
 </div>
 
-<!-- Search Overlay -->
-<div id="searchOverlay">
-  <div style="max-width:680px;margin:0 auto;">
-    <div class="search-close-area">
-      <button class="close-search" id="closeSearch">
-        <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
-      </button>
-    </div>
-    <div class="search-results-header" id="searchHeader">Results</div>
-    <div id="searchResults"></div>
-  </div>
-</div>
+<!-- Search Dropdown (injected into .search-wrap via JS) -->
 
 <div class="toast" id="toast"></div>
 
@@ -509,17 +507,51 @@ async function renderPageToImage(n) {
   await page.render({ canvasContext: ctx, viewport }).promise;
   pageImages[n] = { canvas: offscreen, viewport };
   const tc = await page.getTextContent();
-  pageTexts[n] = tc.items.map(i => i.str).join(' ');
-  // Store text items with their PDF-space bounding boxes
-  // Each item: { str, x, y, w, h } in viewport (scaled) coords
-  pageTextItems[n] = tc.items.map(item => {
-    const [a,b,c,d,e,f] = item.transform;
-    // Apply viewport transform to get canvas coords
+
+  // Build plain text (space-joined items) and a word-level position index.
+  // Each entry in pageTextItems[n]: { str, charStart, charEnd, x, y, w, h }
+  // charStart/charEnd = byte offsets into the page's plain text string.
+  const wordEntries = [];
+  let plainText = '';
+
+  for (const item of tc.items) {
+    if (!item.str) continue;
+    const [a, b, c, d, e, f] = item.transform;
     const pt = viewport.convertToViewportPoint(e, f);
-    const fontH = Math.sqrt(a*a + b*b) * viewport.scale;
-    const fontW = item.width * viewport.scale;
-    return { str: item.str, x: pt[0], y: pt[1] - fontH, w: fontW, h: fontH * 1.2 };
-  });
+    const fontH = Math.sqrt(a * a + b * b) * viewport.scale;
+    const totalW = item.width * viewport.scale;
+
+    // Split the item string into individual words, estimating each word's x offset
+    // proportionally to its character position within the item.
+    const words = item.str.split(/(\s+)/); // keep separators
+    let charPos = 0;
+    for (const token of words) {
+      if (!token || /^\s+$/.test(token)) {
+        charPos += token.length;
+        continue;
+      }
+      const xFrac = item.str.length > 0 ? charPos / item.str.length : 0;
+      const wFrac = token.length / item.str.length;
+      const wordX = pt[0] + xFrac * totalW;
+      const wordW = wFrac * totalW;
+      const globalCharStart = plainText.length + charPos;
+      wordEntries.push({
+        str: token,
+        charStart: globalCharStart,
+        charEnd: globalCharStart + token.length,
+        x: wordX,
+        y: pt[1] - fontH,
+        w: wordW,
+        h: fontH * 1.3
+      });
+      charPos += token.length;
+    }
+    // Append item text + space separator to the plain string
+    plainText += item.str + ' ';
+  }
+
+  pageTexts[n] = plainText.trimEnd();
+  pageTextItems[n] = wordEntries;
 }
 
 function updateProgress(done, total) {
@@ -551,7 +583,7 @@ function resetToHome() {
   pdfDoc = null; totalPages = 0; currentSpread = 0;
   pageImages = []; pageTexts = []; pageTextItems = []; currentSlug = null;
   pendingArrayBuffer = null; pendingFilename = '';
-  activeSearchQuery = '';
+  activeSearchQuery = ''; ttsHighlightEntry = null;
   document.getElementById('searchWrap').style.display = 'none';
   document.getElementById('shareBtn').style.display = 'none';
   document.getElementById('pageInfo').textContent = '';
@@ -612,14 +644,12 @@ function showControls() {
   controlsVisible = true;
   document.getElementById('controlsBar').classList.add('visible');
   document.getElementById('uiPeek').classList.remove('visible');
-  document.getElementById('shareBanner').classList.remove('hidden-ui');
   document.getElementById('ttsChip').classList.remove('hidden-ui');
   clearTimeout(uiHideTimer);
 }
 function hideControls() {
   controlsVisible = false;
   document.getElementById('controlsBar').classList.remove('visible');
-  document.getElementById('shareBanner').classList.add('hidden-ui');
   if (!ttsSpeaking) document.getElementById('ttsChip').classList.add('hidden-ui');
 }
 function scheduleHide(delay) {
@@ -672,10 +702,9 @@ function clearCanvas(c) {
 }
 
 // ─── HIGHLIGHT OVERLAY ───
-// activeSearchQuery drives search highlights; ttsCurrentWord drives TTS highlight
 let activeSearchQuery = '';
-let ttsCurrentWord = '';
-let ttsCurrentPageNum = null;
+// TTS highlight: exact word entry from pageTextItems (has x,y,w,h) + its page number
+let ttsHighlightEntry = null;  // { pageNum, item }
 
 function getPageDrawTransform(canvas, pageNum) {
   if (!pageNum || !pageImages[pageNum]) return null;
@@ -683,10 +712,25 @@ function getPageDrawTransform(canvas, pageNum) {
   const scale = Math.min(canvas.width / img.width, canvas.height / img.height);
   const dw = img.width * scale, dh = img.height * scale;
   const dx = (canvas.width - dw) / 2, dy = (canvas.height - dh) / 2;
-  return { dx, dy, scale, imgW: img.width, imgH: img.height };
+  return { dx, dy, scale };
 }
 
-function drawHighlights(hlCanvas, pageNum, searchQuery, ttsWord) {
+function drawRect(ctx, item, t, fill, stroke, lw) {
+  const x = item.x * t.scale + t.dx;
+  const y = item.y * t.scale + t.dy;
+  const w = item.w * t.scale;
+  const h = item.h * t.scale;
+  if (w < 1 || h < 1) return;
+  ctx.fillStyle = fill;
+  ctx.strokeStyle = stroke;
+  ctx.lineWidth = lw;
+  ctx.beginPath();
+  ctx.roundRect ? ctx.roundRect(x, y, w, h, 2) : ctx.rect(x, y, w, h);
+  ctx.fill();
+  ctx.stroke();
+}
+
+function drawHighlights(hlCanvas, pageNum) {
   hlCanvas.width = hlCanvas.offsetWidth || hlCanvas.parentElement.offsetWidth || 430;
   hlCanvas.height = hlCanvas.offsetHeight || hlCanvas.parentElement.offsetHeight || 520;
   const ctx = hlCanvas.getContext('2d');
@@ -695,55 +739,33 @@ function drawHighlights(hlCanvas, pageNum, searchQuery, ttsWord) {
   const t = getPageDrawTransform(hlCanvas, pageNum);
   if (!t) return;
   const items = pageTextItems[pageNum];
-  const imgViewport = pageImages[pageNum].viewport;
-  // Scale from viewport (OffscreenCanvas) coords → display canvas coords
-  const vScale = t.scale;
-  const vDx = t.dx, vDy = t.dy;
 
-  // Search highlights
-  if (searchQuery && searchQuery.length >= 2) {
-    const lq = searchQuery.toLowerCase();
-    ctx.fillStyle = 'rgba(200,169,110,0.30)';
-    ctx.strokeStyle = 'rgba(200,169,110,0.70)';
-    ctx.lineWidth = 1;
-    for (const item of items) {
-      if (!item.str) continue;
-      if (item.str.toLowerCase().includes(lq)) {
-        const x = item.x * vScale + vDx;
-        const y = item.y * vScale + vDy;
-        const w = item.w * vScale;
-        const h = item.h * vScale;
-        ctx.beginPath();
-        ctx.roundRect ? ctx.roundRect(x, y, w, h, 2) : ctx.rect(x, y, w, h);
-        ctx.fill();
-        ctx.stroke();
+  // Search highlights — highlight exact phrase spans only
+  if (activeSearchQuery && activeSearchQuery.length >= 2 && pageTexts[pageNum]) {
+    const lq = activeSearchQuery.toLowerCase();
+    const ltext = (pageTexts[pageNum] || '').toLowerCase();
+    let idx = 0;
+    while ((idx = ltext.indexOf(lq, idx)) !== -1) {
+      const end = idx + lq.length;
+      // Collect all word entries that overlap this match span
+      const spanItems = items.filter(it => it.charEnd > idx && it.charStart < end);
+      if (spanItems.length) {
+        // Draw one rect covering all overlapping entries
+        const minX = Math.min(...spanItems.map(it => it.x));
+        const minY = Math.min(...spanItems.map(it => it.y));
+        const maxX = Math.max(...spanItems.map(it => it.x + it.w));
+        const maxH = Math.max(...spanItems.map(it => it.h));
+        const synthetic = { x: minX, y: minY, w: maxX - minX, h: maxH };
+        drawRect(ctx, synthetic, t, 'rgba(200,169,110,0.28)', 'rgba(200,169,110,0.7)', 1);
       }
+      idx++;
     }
   }
 
-  // TTS word highlight
-  if (ttsWord && ttsCurrentPageNum === pageNum) {
-    const lw = ttsWord.toLowerCase().replace(/[^a-z0-9]/g, '');
-    ctx.fillStyle = 'rgba(232,201,138,0.45)';
-    ctx.strokeStyle = 'rgba(232,201,138,0.9)';
-    ctx.lineWidth = 1.5;
-    let found = false;
-    for (const item of items) {
-      if (found) break;
-      if (!item.str) continue;
-      const li = item.str.toLowerCase().replace(/[^a-z0-9]/g, '');
-      if (li.includes(lw) && lw.length > 2) {
-        const x = item.x * vScale + vDx;
-        const y = item.y * vScale + vDy;
-        const w = item.w * vScale;
-        const h = item.h * vScale;
-        ctx.beginPath();
-        ctx.roundRect ? ctx.roundRect(x, y, w, h, 3) : ctx.rect(x, y, w, h);
-        ctx.fill();
-        ctx.stroke();
-        found = true;
-      }
-    }
+  // TTS highlight — bright amber box on the exact currently-spoken word
+  if (ttsHighlightEntry && ttsHighlightEntry.pageNum === pageNum) {
+    drawRect(ctx, ttsHighlightEntry.item, t,
+      'rgba(255,210,80,0.55)', 'rgba(255,185,30,1)', 1.5);
   }
 }
 
@@ -753,12 +775,13 @@ function refreshHighlights() {
   const rHL = document.getElementById('rightHL');
   lHL.width = lHL.offsetWidth || 430; lHL.height = lHL.offsetHeight || 520;
   rHL.width = rHL.offsetWidth || 430; rHL.height = rHL.offsetHeight || 520;
-  drawHighlights(lHL, left, activeSearchQuery, ttsCurrentWord);
-  drawHighlights(rHL, right, activeSearchQuery, ttsCurrentWord);
+  drawHighlights(lHL, left);
+  drawHighlights(rHL, right);
 }
 
 function clearSearchHighlights() {
   activeSearchQuery = '';
+  ttsHighlightEntry = null;
   refreshHighlights();
 }
 
@@ -875,7 +898,7 @@ document.getElementById('leftHalf').addEventListener('click', () => { if (!isFli
 // ── TTS ──
 let ttsSpeaking = false, ttsUtterance = null, ttsRate = 0.95, ttsVoice = null;
 let ttsSettingsOpen = false;
-let ttsHighlightTimer = null;
+let _ttsSpreadInfo = null;
 
 function populateVoices() {
   const sel = document.getElementById('voiceSelect');
@@ -953,13 +976,23 @@ document.addEventListener('click', e => {
   }
 });
 
-function getSpreadText() {
+// Returns { text, leftOffset, rightOffset } so onboundary can map charIndex → page
+function getSpreadTextInfo() {
   const { left, right } = getSpreadPages(currentSpread);
   let text = '';
-  if (left) text += (pageTexts[left] || '').trim() + ' ';
-  if (right) text += (pageTexts[right] || '').trim();
-  return text.trim();
+  let leftOffset = -1, rightOffset = -1;
+  if (left && pageTexts[left]) {
+    leftOffset = 0;
+    text += pageTexts[left].trim() + ' ';
+  }
+  if (right && pageTexts[right]) {
+    rightOffset = text.length;
+    text += pageTexts[right].trim();
+  }
+  return { text: text.trim(), leftOffset, rightOffset,
+           leftPage: left, rightPage: right };
 }
+function getSpreadText() { return getSpreadTextInfo().text; }
 
 function toggleTTS() {
   if (ttsSpeaking) { stopTTS(); return; }
@@ -971,130 +1004,195 @@ function toggleTTS() {
 function startTTS(text) {
   if (!('speechSynthesis' in window)) { showToast('Text-to-speech not supported in this browser'); return; }
   window.speechSynthesis.cancel();
+  _ttsSpreadInfo = getSpreadTextInfo();
   ttsUtterance = new SpeechSynthesisUtterance(text);
   ttsUtterance.rate = ttsRate; ttsUtterance.pitch = 1; ttsUtterance.lang = 'en-US';
   if (ttsVoice) ttsUtterance.voice = ttsVoice;
 
-  // Word boundary → update highlight on the PDF canvas
   ttsUtterance.onboundary = e => {
     if (e.name !== 'word') return;
-    const word = text.substr(e.charIndex, e.charLength || 6).trim().replace(/[^a-zA-Z0-9']/g, '');
-    if (!word) return;
-    // Figure out which page the charIndex falls on
-    const { left, right } = getSpreadPages(currentSpread);
-    const leftLen = left ? (pageTexts[left] || '').trim().length : 0;
-    // charIndex into the combined text — left page is first
-    const onLeft = left && e.charIndex < leftLen;
-    ttsCurrentPageNum = onLeft ? left : right;
-    ttsCurrentWord = word;
-    document.getElementById('ttsLabel').textContent = word;
+    const ci = e.charIndex;
+    const cl = e.charLength || 1;
+    const info = _ttsSpreadInfo;
+    if (!info) return;
+    let pageNum, localChar;
+    if (info.rightPage && info.rightOffset >= 0 && ci >= info.rightOffset) {
+      pageNum = info.rightPage; localChar = ci - info.rightOffset;
+    } else if (info.leftPage && info.leftOffset >= 0) {
+      pageNum = info.leftPage; localChar = ci - info.leftOffset;
+    } else return;
+    if (!pageNum || !pageTextItems[pageNum]) return;
+    const items = pageTextItems[pageNum];
+    // Pick the word entry with the most overlap with [localChar, localChar+cl)
+    let best = null, bestOverlap = -1;
+    for (const item of items) {
+      const overlap = Math.min(item.charEnd, localChar + cl) - Math.max(item.charStart, localChar);
+      if (overlap > bestOverlap) { bestOverlap = overlap; best = item; }
+    }
+    if (!best) return;
+    ttsHighlightEntry = { pageNum, item: best };
+    document.getElementById('ttsLabel').textContent = best.str;
     refreshHighlights();
   };
 
   ttsUtterance.onstart = () => {
     ttsSpeaking = true;
     document.getElementById('ttsBtn').classList.add('speaking');
-    const chip = document.getElementById('ttsChip');
-    chip.style.display = 'flex';
+    document.getElementById('ttsChip').style.display = 'flex';
     const { left, right } = getSpreadPages(currentSpread);
-    document.getElementById('ttsLabel').textContent = left && right ? `Reading pp. ${left}–${right}` : `Reading p. ${right || left}`;
-    ttsCurrentPageNum = right || left;
+    document.getElementById('ttsLabel').textContent =
+      left && right ? `Reading pp. ${left}\u2013${right}` : `Reading p. ${right || left}`;
   };
 
   ttsUtterance.onend = () => {
-    clearTimeout(ttsHighlightTimer);
-    ttsCurrentWord = '';
-    refreshHighlights();
+    ttsHighlightEntry = null; refreshHighlights();
     const max = totalPages % 2 === 0 ? totalPages - 2 : totalPages - 1;
     const nextSpread = currentSpread + 2;
     if (nextSpread <= max) {
       goToSpread(nextSpread, 'forward', () => {
+        _ttsSpreadInfo = getSpreadTextInfo();
         const nextText = getSpreadText();
         if (nextText && ttsSpeaking) startTTS(nextText);
         else { ttsSpeaking = false; document.getElementById('ttsBtn').classList.remove('speaking'); document.getElementById('ttsChip').style.display = 'none'; }
       });
     } else {
       ttsSpeaking = false;
-      ttsCurrentWord = '';
       document.getElementById('ttsBtn').classList.remove('speaking');
       document.getElementById('ttsChip').style.display = 'none';
     }
   };
   ttsUtterance.onerror = () => {
-    ttsSpeaking = false; ttsCurrentWord = '';
-    clearTimeout(ttsHighlightTimer);
+    ttsSpeaking = false; ttsHighlightEntry = null;
     document.getElementById('ttsBtn').classList.remove('speaking');
     document.getElementById('ttsChip').style.display = 'none';
+    refreshHighlights();
   };
   window.speechSynthesis.speak(ttsUtterance);
 }
 
 function stopTTS() {
   window.speechSynthesis?.cancel();
-  ttsSpeaking = false; ttsCurrentWord = ''; ttsCurrentPageNum = null;
-  clearTimeout(ttsHighlightTimer);
+  ttsSpeaking = false; ttsHighlightEntry = null; _ttsSpreadInfo = null;
   document.getElementById('ttsBtn').classList.remove('speaking');
   document.getElementById('ttsChip').style.display = 'none';
   refreshHighlights();
 }
 
+
 // ── SEARCH ──
-let searchDebounce;
+// ── SEARCH ──
+let searchDebounce, _searchMatches = [], _sdSelected = -1;
+
+function esc(s) { return s.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;'); }
+function sdHighlight(text, q) {
+  return text.replace(new RegExp('(' + q.replace(/[.*+?^${}()|[\]\\]/g, '\\$&') + ')', 'gi'), '<mark>$1</mark>');
+}
+
+function openDropdown() { document.getElementById('searchDropdown').classList.add('open'); }
+function closeSearch() {
+  document.getElementById('searchDropdown').classList.remove('open');
+  _sdSelected = -1;
+}
+
+function renderDropdown(matches, query) {
+  const dd = document.getElementById('searchDropdown');
+  if (!matches.length) {
+    dd.innerHTML = `<div class="sd-empty">No results for "${esc(query)}"</div>`;
+  } else {
+    dd.innerHTML = matches.map((m, i) => {
+      const snip = sdHighlight(esc(m.snippet), esc(query));
+      return `<div class="sd-item" data-idx="${i}" onclick="jumpToMatch(${i})">
+        <span class="sd-page">p.${m.page}</span>
+        <span class="sd-snippet">${snip}</span>
+      </div>`;
+    }).join('');
+  }
+  openDropdown();
+  _sdSelected = -1;
+}
+
+function updateSelection(idx) {
+  const items = document.querySelectorAll('#searchDropdown .sd-item');
+  items.forEach((el, i) => el.classList.toggle('sd-active', i === idx));
+  if (items[idx]) items[idx].scrollIntoView({ block: 'nearest' });
+}
+
 document.getElementById('searchInput').addEventListener('input', e => {
   clearTimeout(searchDebounce);
   const q = e.target.value.trim();
   if (q.length < 2) {
     activeSearchQuery = '';
+    _searchMatches = [];
     refreshHighlights();
     closeSearch();
     return;
   }
   searchDebounce = setTimeout(() => {
+    const lq = q.toLowerCase();
+    const matches = [];
+    for (let i = 1; i <= totalPages; i++) {
+      const text = pageTexts[i] || '';
+      const ltext = text.toLowerCase();
+      let idx = 0, count = 0;
+      while ((idx = ltext.indexOf(lq, idx)) !== -1) { count++; idx++; }
+      if (count > 0) {
+        const pos = ltext.indexOf(lq);
+        const s = Math.max(0, pos - 40), e2 = Math.min(text.length, pos + q.length + 60);
+        matches.push({ page: i, snippet: (s > 0 ? '…' : '') + text.slice(s, e2) + (e2 < text.length ? '…' : ''), count });
+      }
+    }
+    _searchMatches = matches;
+    // Only highlight the exact searched phrase on canvas, not every word containing it
     activeSearchQuery = q;
     refreshHighlights();
-    doSearch(q);
-  }, 200);
-});
-document.getElementById('searchInput').addEventListener('keydown', e => {
-  if (e.key === 'Escape') { activeSearchQuery = ''; refreshHighlights(); closeSearch(); e.target.blur(); }
+    renderDropdown(matches, q);
+  }, 150);
 });
 
-function doSearch(query) {
-  document.getElementById('searchOverlay').style.display = 'block';
-  const lq = query.toLowerCase();
-  const matches = [];
-  for (let i = 1; i <= totalPages; i++) {
-    const text = pageTexts[i], ltext = text.toLowerCase();
-    let idx = 0, count = 0;
-    while ((idx = ltext.indexOf(lq, idx)) !== -1) { count++; idx++; }
-    if (count > 0) {
-      const pos = ltext.indexOf(lq);
-      const s = Math.max(0, pos - 60), e2 = Math.min(text.length, pos + query.length + 80);
-      matches.push({ page: i, snippet: (s > 0 ? '…' : '') + text.slice(s, e2) + (e2 < text.length ? '…' : ''), count });
+document.getElementById('searchInput').addEventListener('keydown', e => {
+  const items = document.querySelectorAll('#searchDropdown .sd-item');
+  if (e.key === 'ArrowDown') {
+    e.preventDefault();
+    _sdSelected = Math.min(_sdSelected + 1, items.length - 1);
+    updateSelection(_sdSelected);
+  } else if (e.key === 'ArrowUp') {
+    e.preventDefault();
+    _sdSelected = Math.max(_sdSelected - 1, 0);
+    updateSelection(_sdSelected);
+  } else if (e.key === 'Enter') {
+    e.preventDefault();
+    if (_sdSelected >= 0 && _searchMatches[_sdSelected]) {
+      jumpToMatch(_sdSelected);
+    } else if (_searchMatches.length) {
+      // Jump to nearest match to current spread
+      const currentPage = currentSpread + 1;
+      const nearest = _searchMatches.reduce((best, m) =>
+        Math.abs(m.page - currentPage) < Math.abs(best.page - currentPage) ? m : best
+      );
+      jumpToMatch(_searchMatches.indexOf(nearest));
     }
+  } else if (e.key === 'Escape') {
+    activeSearchQuery = '';
+    _searchMatches = [];
+    refreshHighlights();
+    closeSearch();
+    e.target.blur();
   }
-  document.getElementById('searchHeader').innerHTML = matches.length
-    ? `<span>${matches.length}</span> result${matches.length !== 1 ? 's' : ''} for "<span>${esc(query)}</span>"`
-    : `No results for "<span>${esc(query)}</span>"`;
-  document.getElementById('searchResults').innerHTML = matches.length
-    ? matches.map(m => `<div class="result-item" onclick="jumpTo(${m.page})"><div class="result-page">Page ${m.page} · ${m.count} match${m.count !== 1 ? 'es' : ''}</div><div class="result-text">${highlight(esc(m.snippet), esc(query))}</div></div>`).join('')
-    : '<div class="no-results">No matches found in this document.</div>';
-}
-function highlight(text, q) {
-  return text.replace(new RegExp('(' + q.replace(/[.*+?^${}()|[\]\\]/g, '\\$&') + ')', 'gi'), '<mark>$1</mark>');
-}
-function esc(s) { return s.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;'); }
-function jumpTo(p) {
-  closeSearch();
-  goToSpread(p === 1 ? 0 : (p % 2 === 0 ? p : p - 1), undefined, () => refreshHighlights());
-}
-function closeSearch() { document.getElementById('searchOverlay').style.display = 'none'; }
-document.getElementById('closeSearch').addEventListener('click', () => {
-  activeSearchQuery = '';
-  refreshHighlights();
-  closeSearch();
-  document.getElementById('searchInput').value = '';
 });
+
+// Close dropdown when clicking outside
+document.addEventListener('click', e => {
+  const wrap = document.getElementById('searchWrap');
+  if (wrap && !wrap.contains(e.target)) closeSearch();
+});
+
+function jumpToMatch(idx) {
+  const m = _searchMatches[idx];
+  if (!m) return;
+  closeSearch();
+  document.getElementById('searchInput').blur();
+  goToSpread(m.page === 1 ? 0 : (m.page % 2 === 0 ? m.page : m.page - 1), undefined, () => refreshHighlights());
+}
 
 // ── COPY ──
 function copyLink() {
