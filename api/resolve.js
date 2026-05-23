@@ -19,7 +19,7 @@ export default async function handler(req) {
 
 async function kvGet(key) {
   // Vercel KV REST API (included in Vercel free tier)
-  const { KV_REST_API_URL, KV_REST_API_TOKEN } = process.env;
+  const { UPSTASH_REDIS_REST_URL: KV_REST_API_URL, UPSTASH_REDIS_REST_TOKEN: KV_REST_API_TOKEN } = process.env;
   if (!KV_REST_API_URL) return null;
   const res = await fetch(`${KV_REST_API_URL}/get/book:${key}`, {
     headers: { Authorization: `Bearer ${KV_REST_API_TOKEN}` }
