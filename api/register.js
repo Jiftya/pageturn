@@ -19,7 +19,7 @@ export default async function handler(req) {
 }
 
 async function kvSet(key, value, ttlSeconds) {
-  const { KV_REST_API_URL, KV_REST_API_TOKEN } = process.env;
+  const { UPSTASH_REDIS_REST_URL: KV_REST_API_URL, UPSTASH_REDIS_REST_TOKEN: KV_REST_API_TOKEN } = process.env;
   if (!KV_REST_API_URL) {
     console.error('KV_REST_API_URL is not set');
     return false;
