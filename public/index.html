@@ -137,8 +137,35 @@ header.hidden-ui { opacity: 0; pointer-events: none; transform: translateY(-8px)
 /* Canvas wrapper — lets highlight overlay sit on top */
 .canvas-wrap { position: relative; width: 100%; height: 100%; }
 .page-canvas { width: 100% !important; height: 100% !important; object-fit: contain; background: var(--page-bg); display: block; }
-/* Highlight overlay canvas — drawn on top of page canvas */
-.hl-canvas { position: absolute; top: 0; left: 0; width: 100% !important; height: 100% !important; pointer-events: none; }
+
+/* PDF.js text layer — invisible but selectable, used for highlights */
+.textLayer {
+  position: absolute;
+  overflow: hidden;
+  opacity: 1;
+  line-height: 1;
+}
+.textLayer span {
+  position: absolute;
+  white-space: pre;
+  color: transparent;
+  cursor: text;
+  transform-origin: 0% 0%;
+}
+.textLayer mark {
+  background: rgba(255, 220, 0, 0.55);
+  border-radius: 2px;
+  color: transparent;
+  mix-blend-mode: multiply;
+  -webkit-box-decoration-break: clone;
+  box-decoration-break: clone;
+}
+.textLayer .tts-word {
+  background: rgba(255, 200, 0, 0.65);
+  border-radius: 2px;
+  color: transparent;
+  mix-blend-mode: multiply;
+}
 
 @keyframes flip-forward  { 0% { transform: rotateY(0deg); } 100% { transform: rotateY(-180deg); } }
 @keyframes flip-backward { 0% { transform: rotateY(0deg); } 100% { transform: rotateY(180deg); } }
@@ -202,8 +229,7 @@ kbd { display: inline-block; background: rgba(255,255,255,0.06); border: 1px sol
 #searchDropdown.open { display: block; }
 .sd-item {
   padding: 8px 14px; cursor: pointer; border-bottom: 1px solid rgba(255,255,255,0.04);
-  display: flex; align-items: baseline; gap: 10px;
-  transition: background 0.12s;
+  display: flex; align-items: baseline; gap: 10px; transition: background 0.12s;
 }
 .sd-item:last-child { border-bottom: none; }
 .sd-item:hover, .sd-item.sd-active { background: rgba(200,169,110,0.1); }
@@ -340,13 +366,13 @@ kbd { display: inline-block; background: rgba(255,255,255,0.06); border: 1px sol
       <div class="page-half left" id="leftHalf">
         <div class="canvas-wrap">
           <canvas id="leftCanvas" class="page-canvas"></canvas>
-          <canvas id="leftHL" class="hl-canvas"></canvas>
+          <div id="leftTextLayer" class="textLayer"></div>
         </div>
       </div>
       <div class="page-half right" id="rightHalf">
         <div class="canvas-wrap">
           <canvas id="rightCanvas" class="page-canvas"></canvas>
-          <canvas id="rightHL" class="hl-canvas"></canvas>
+          <div id="rightTextLayer" class="textLayer"></div>
         </div>
       </div>
     </div>
@@ -413,7 +439,6 @@ kbd { display: inline-block; background: rgba(255,255,255,0.06); border: 1px sol
   </div>
 </div>
 
-<!-- Search Dropdown (injected into .search-wrap via JS) -->
 
 <div class="toast" id="toast"></div>
 
@@ -422,7 +447,7 @@ pdfjsLib.GlobalWorkerOptions.workerSrc =
   'https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.worker.min.js';
 
 let pdfDoc = null, totalPages = 0, currentSpread = 0;
-let pageImages = [], pageTexts = [], pageTextItems = [];
+let pageImages = [], pageTexts = [], pageTextItems = [], pageTextContents = [];
 let isFlipping = false;
 let currentSlug = null;
 let pendingArrayBuffer = null, pendingFilename = '';
@@ -489,6 +514,7 @@ async function processPDF(arrayBuffer) {
   pageImages   = new Array(totalPages + 1).fill(null);
   pageTexts    = new Array(totalPages + 1).fill('');
   pageTextItems = new Array(totalPages + 1).fill(null);
+  pageTextContents = new Array(totalPages + 1).fill(null);
   for (let i = 1; i <= totalPages; i++) {
     await renderPageToImage(i);
     updateProgress(i, totalPages);
@@ -507,10 +533,9 @@ async function renderPageToImage(n) {
   await page.render({ canvasContext: ctx, viewport }).promise;
   pageImages[n] = { canvas: offscreen, viewport };
   const tc = await page.getTextContent();
+  pageTextContents[n] = tc; // store for text layer rendering
 
-  // Build plain text (space-joined items) and a word-level position index.
-  // Each entry in pageTextItems[n]: { str, charStart, charEnd, x, y, w, h }
-  // charStart/charEnd = byte offsets into the page's plain text string.
+  // Build plain text and char-indexed word entries for TTS
   const wordEntries = [];
   let plainText = '';
 
@@ -521,15 +546,10 @@ async function renderPageToImage(n) {
     const fontH = Math.sqrt(a * a + b * b) * viewport.scale;
     const totalW = item.width * viewport.scale;
 
-    // Split the item string into individual words, estimating each word's x offset
-    // proportionally to its character position within the item.
-    const words = item.str.split(/(\s+)/); // keep separators
+    const words = item.str.split(/(\s+)/);
     let charPos = 0;
     for (const token of words) {
-      if (!token || /^\s+$/.test(token)) {
-        charPos += token.length;
-        continue;
-      }
+      if (!token || /^\s+$/.test(token)) { charPos += token.length; continue; }
       const xFrac = item.str.length > 0 ? charPos / item.str.length : 0;
       const wFrac = token.length / item.str.length;
       const wordX = pt[0] + xFrac * totalW;
@@ -539,14 +559,10 @@ async function renderPageToImage(n) {
         str: token,
         charStart: globalCharStart,
         charEnd: globalCharStart + token.length,
-        x: wordX,
-        y: pt[1] - fontH,
-        w: wordW,
-        h: fontH * 1.3
+        x: wordX, y: pt[1] - fontH, w: wordW, h: fontH * 1.3
       });
       charPos += token.length;
     }
-    // Append item text + space separator to the plain string
     plainText += item.str + ' ';
   }
 
@@ -581,7 +597,7 @@ function showBook() {
 function resetToHome() {
   stopTTS(); clearSearchHighlights();
   pdfDoc = null; totalPages = 0; currentSpread = 0;
-  pageImages = []; pageTexts = []; pageTextItems = []; currentSlug = null;
+  pageImages = []; pageTexts = []; pageTextItems = []; pageTextContents = []; currentSlug = null;
   pendingArrayBuffer = null; pendingFilename = '';
   activeSearchQuery = ''; ttsHighlightEntry = null;
   document.getElementById('searchWrap').style.display = 'none';
@@ -690,93 +706,181 @@ function drawPageOnCanvas(canvas, pageNum) {
     const scale = Math.min(width / img.width, height / img.height);
     const dw = img.width * scale, dh = img.height * scale;
     const dx = (width - dw) / 2, dy = (height - dh) / 2;
+
+    // Draw highlights BEFORE the page image so they appear under the text
+    drawHighlightsUnder(ctx, pageNum, dx, dy, scale);
+
     ctx.drawImage(img, dx, dy, dw, dh);
     ctx.fillStyle = 'rgba(100,95,88,0.38)';
     ctx.font = '11px DM Sans, sans-serif'; ctx.textAlign = 'center';
     ctx.fillText(String(pageNum), width / 2, height - 8);
   }
 }
-function clearCanvas(c) {
-  const ctx = c.getContext('2d');
-  ctx.fillStyle = '#faf8f4'; ctx.fillRect(0, 0, c.width, c.height);
-}
 
-// ─── HIGHLIGHT OVERLAY ───
-let activeSearchQuery = '';
-// TTS highlight: exact word entry from pageTextItems (has x,y,w,h) + its page number
-let ttsHighlightEntry = null;  // { pageNum, item }
-
-function getPageDrawTransform(canvas, pageNum) {
-  if (!pageNum || !pageImages[pageNum]) return null;
-  const img = pageImages[pageNum].canvas;
-  const scale = Math.min(canvas.width / img.width, canvas.height / img.height);
-  const dw = img.width * scale, dh = img.height * scale;
-  const dx = (canvas.width - dw) / 2, dy = (canvas.height - dh) / 2;
-  return { dx, dy, scale };
-}
-
-function drawRect(ctx, item, t, fill, stroke, lw) {
-  const x = item.x * t.scale + t.dx;
-  const y = item.y * t.scale + t.dy;
-  const w = item.w * t.scale;
-  const h = item.h * t.scale;
-  if (w < 1 || h < 1) return;
-  ctx.fillStyle = fill;
-  ctx.strokeStyle = stroke;
-  ctx.lineWidth = lw;
-  ctx.beginPath();
-  ctx.roundRect ? ctx.roundRect(x, y, w, h, 2) : ctx.rect(x, y, w, h);
-  ctx.fill();
-  ctx.stroke();
-}
-
-function drawHighlights(hlCanvas, pageNum) {
-  hlCanvas.width = hlCanvas.offsetWidth || hlCanvas.parentElement.offsetWidth || 430;
-  hlCanvas.height = hlCanvas.offsetHeight || hlCanvas.parentElement.offsetHeight || 520;
-  const ctx = hlCanvas.getContext('2d');
-  ctx.clearRect(0, 0, hlCanvas.width, hlCanvas.height);
-  if (!pageNum || !pageTextItems[pageNum]) return;
-  const t = getPageDrawTransform(hlCanvas, pageNum);
-  if (!t) return;
+function drawHighlightsUnder(ctx, pageNum, dx, dy, scale) {
+  const hasSearch = activeSearchQuery && activeSearchQuery.length >= 2;
+  const hasTTS = ttsHighlightEntry && ttsHighlightEntry.pageNum === pageNum;
+  if (!hasSearch && !hasTTS) return;
   const items = pageTextItems[pageNum];
+  if (!items) return;
 
-  // Search highlights — highlight exact phrase spans only
-  if (activeSearchQuery && activeSearchQuery.length >= 2 && pageTexts[pageNum]) {
+  ctx.save();
+  ctx.globalCompositeOperation = 'multiply';
+
+  if (hasSearch) {
     const lq = activeSearchQuery.toLowerCase();
     const ltext = (pageTexts[pageNum] || '').toLowerCase();
     let idx = 0;
     while ((idx = ltext.indexOf(lq, idx)) !== -1) {
       const end = idx + lq.length;
-      // Collect all word entries that overlap this match span
       const spanItems = items.filter(it => it.charEnd > idx && it.charStart < end);
       if (spanItems.length) {
-        // Draw one rect covering all overlapping entries
         const minX = Math.min(...spanItems.map(it => it.x));
         const minY = Math.min(...spanItems.map(it => it.y));
         const maxX = Math.max(...spanItems.map(it => it.x + it.w));
         const maxH = Math.max(...spanItems.map(it => it.h));
-        const synthetic = { x: minX, y: minY, w: maxX - minX, h: maxH };
-        drawRect(ctx, synthetic, t, 'rgba(200,169,110,0.28)', 'rgba(200,169,110,0.7)', 1);
+        ctx.fillStyle = 'rgba(255, 220, 0, 0.6)';
+        ctx.beginPath();
+        ctx.roundRect
+          ? ctx.roundRect(minX * scale + dx, minY * scale + dy, (maxX - minX) * scale, maxH * scale, 2)
+          : ctx.rect(minX * scale + dx, minY * scale + dy, (maxX - minX) * scale, maxH * scale);
+        ctx.fill();
       }
       idx++;
     }
   }
 
-  // TTS highlight — bright amber box on the exact currently-spoken word
-  if (ttsHighlightEntry && ttsHighlightEntry.pageNum === pageNum) {
-    drawRect(ctx, ttsHighlightEntry.item, t,
-      'rgba(255,210,80,0.55)', 'rgba(255,185,30,1)', 1.5);
+  if (hasTTS) {
+    const { wordStr } = ttsHighlightEntry;
+    const ltext = (pageTexts[pageNum] || '').toLowerCase();
+    const idx = ltext.indexOf(wordStr.toLowerCase());
+    if (idx !== -1) {
+      const end = idx + wordStr.length;
+      const spanItems = items.filter(it => it.charEnd > idx && it.charStart < end);
+      if (spanItems.length) {
+        const minX = Math.min(...spanItems.map(it => it.x));
+        const minY = Math.min(...spanItems.map(it => it.y));
+        const maxX = Math.max(...spanItems.map(it => it.x + it.w));
+        const maxH = Math.max(...spanItems.map(it => it.h));
+        ctx.fillStyle = 'rgba(255, 180, 0, 0.7)';
+        ctx.beginPath();
+        ctx.roundRect
+          ? ctx.roundRect(minX * scale + dx, minY * scale + dy, (maxX - minX) * scale, maxH * scale, 2)
+          : ctx.rect(minX * scale + dx, minY * scale + dy, (maxX - minX) * scale, maxH * scale);
+        ctx.fill();
+      }
+    }
   }
+
+  ctx.restore();
+}
+function clearCanvas(c) {
+  const ctx = c.getContext('2d');
+  ctx.fillStyle = '#faf8f4'; ctx.fillRect(0, 0, c.width, c.height);
+}
+
+// ─── TEXT LAYER + HIGHLIGHTS ───
+let activeSearchQuery = '';
+let ttsHighlightEntry = null; // { pageNum, charStart, charEnd }
+
+// Render PDF.js text layer into a div, scaled to match the displayed canvas image
+async function renderTextLayer(layerDiv, pageNum, canvas) {
+  layerDiv.innerHTML = '';
+  if (!pageNum || !pageTextContents[pageNum] || !pageImages[pageNum]) return;
+
+  const img = pageImages[pageNum].canvas;         // offscreen canvas (scale 1.8)
+  const canvasW = canvas.offsetWidth  || canvas.width;
+  const canvasH = canvas.offsetHeight || canvas.height;
+
+  // How much smaller is the displayed image vs the offscreen canvas?
+  const fitScale = Math.min(canvasW / img.width, canvasH / img.height);
+  const dw = img.width  * fitScale;
+  const dh = img.height * fitScale;
+  const dx = (canvasW - dw) / 2;
+  const dy = (canvasH - dh) / 2;
+
+  // Position layer div exactly over the rendered image area
+  layerDiv.style.left   = dx + 'px';
+  layerDiv.style.top    = dy + 'px';
+  layerDiv.style.width  = dw + 'px';
+  layerDiv.style.height = dh + 'px';
+
+  // Build a viewport scaled to the display size so pdfjs positions spans correctly.
+  // pageImages[n].viewport was created at scale 1.8; we need scale = 1.8 * fitScale.
+  const offscreenScale = 1.8;
+  const displayScale   = offscreenScale * fitScale;
+  const page = await pdfDoc.getPage(pageNum);
+  const scaledViewport = page.getViewport({ scale: displayScale });
+
+  layerDiv.style.setProperty('--scale-factor', displayScale);
+
+  await pdfjsLib.renderTextLayer({
+    textContentSource: pageTextContents[pageNum],
+    container: layerDiv,
+    viewport: scaledViewport,
+    textDivs: []
+  }).promise;
+
+  applyHighlightsToLayer(layerDiv, pageNum);
+}
+
+// Apply search + TTS highlights to an already-rendered text layer
+function applyHighlightsToLayer(layerDiv, pageNum) {
+  // Restore all spans to plain text first
+  for (const span of layerDiv.querySelectorAll('span[data-raw]')) {
+    span.innerHTML = span.dataset.raw;
+  }
+  // Stash raw text on first run
+  for (const span of layerDiv.querySelectorAll('span')) {
+    if (!span.dataset.raw) span.dataset.raw = span.textContent;
+  }
+
+  if (activeSearchQuery && activeSearchQuery.length >= 2) {
+    const q = activeSearchQuery;
+    const re = new RegExp(q.replace(/[.*+?^${}()|[\]\\]/g, '\\$&'), 'gi');
+    for (const span of layerDiv.querySelectorAll('span')) {
+      const raw = span.dataset.raw || span.textContent;
+      if (raw.toLowerCase().includes(q.toLowerCase())) {
+        span.innerHTML = raw.replace(re, m => `<mark>${m}</mark>`);
+      }
+    }
+  }
+
+  // TTS: highlight the currently-spoken word
+  if (ttsHighlightEntry && ttsHighlightEntry.pageNum === pageNum) {
+    const { wordStr } = ttsHighlightEntry;
+    if (wordStr) {
+      for (const span of layerDiv.querySelectorAll('span')) {
+        const raw = span.dataset.raw || span.textContent;
+        if (raw === wordStr || raw.includes(wordStr)) {
+          const idx = raw.indexOf(wordStr);
+          if (idx !== -1) {
+            span.innerHTML =
+              escHtml(raw.slice(0, idx)) +
+              `<span class="tts-word">${escHtml(wordStr)}</span>` +
+              escHtml(raw.slice(idx + wordStr.length));
+          }
+          break;
+        }
+      }
+    }
+  }
+}
+
+function escHtml(s) {
+  return s.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
 }
 
 function refreshHighlights() {
   const { left, right } = getSpreadPages(currentSpread);
-  const lHL = document.getElementById('leftHL');
-  const rHL = document.getElementById('rightHL');
-  lHL.width = lHL.offsetWidth || 430; lHL.height = lHL.offsetHeight || 520;
-  rHL.width = rHL.offsetWidth || 430; rHL.height = rHL.offsetHeight || 520;
-  drawHighlights(lHL, left);
-  drawHighlights(rHL, right);
+  const lLayer = document.getElementById('leftTextLayer');
+  const rLayer = document.getElementById('rightTextLayer');
+  const lc = document.getElementById('leftCanvas');
+  const rc = document.getElementById('rightCanvas');
+  if (left)  renderTextLayer(lLayer, left, lc);
+  else lLayer.innerHTML = '';
+  if (right) renderTextLayer(rLayer, right, rc);
+  else rLayer.innerHTML = '';
 }
 
 function clearSearchHighlights() {
@@ -784,6 +888,7 @@ function clearSearchHighlights() {
   ttsHighlightEntry = null;
   refreshHighlights();
 }
+
 
 async function drawSpread(spread, direction, onReady) {
   const { left, right } = getSpreadPages(spread);
@@ -1015,23 +1120,19 @@ function startTTS(text) {
     const cl = e.charLength || 1;
     const info = _ttsSpreadInfo;
     if (!info) return;
+    // Determine which page
     let pageNum, localChar;
     if (info.rightPage && info.rightOffset >= 0 && ci >= info.rightOffset) {
       pageNum = info.rightPage; localChar = ci - info.rightOffset;
     } else if (info.leftPage && info.leftOffset >= 0) {
       pageNum = info.leftPage; localChar = ci - info.leftOffset;
     } else return;
-    if (!pageNum || !pageTextItems[pageNum]) return;
-    const items = pageTextItems[pageNum];
-    // Pick the word entry with the most overlap with [localChar, localChar+cl)
-    let best = null, bestOverlap = -1;
-    for (const item of items) {
-      const overlap = Math.min(item.charEnd, localChar + cl) - Math.max(item.charStart, localChar);
-      if (overlap > bestOverlap) { bestOverlap = overlap; best = item; }
-    }
-    if (!best) return;
-    ttsHighlightEntry = { pageNum, item: best };
-    document.getElementById('ttsLabel').textContent = best.str;
+    if (!pageNum || !pageTexts[pageNum]) return;
+    // Extract the exact word string from the page text
+    const wordStr = pageTexts[pageNum].slice(localChar, localChar + cl);
+    if (!wordStr.trim()) return;
+    ttsHighlightEntry = { pageNum, wordStr: wordStr.trim() };
+    document.getElementById('ttsLabel').textContent = wordStr.trim();
     refreshHighlights();
   };
 
@@ -1084,11 +1185,7 @@ function stopTTS() {
 let searchDebounce, _searchMatches = [], _sdSelected = -1;
 
 function esc(s) { return s.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;'); }
-function sdHighlight(text, q) {
-  return text.replace(new RegExp('(' + q.replace(/[.*+?^${}()|[\]\\]/g, '\\$&') + ')', 'gi'), '<mark>$1</mark>');
-}
 
-function openDropdown() { document.getElementById('searchDropdown').classList.add('open'); }
 function closeSearch() {
   document.getElementById('searchDropdown').classList.remove('open');
   _sdSelected = -1;
@@ -1099,33 +1196,35 @@ function renderDropdown(matches, query) {
   if (!matches.length) {
     dd.innerHTML = `<div class="sd-empty">No results for "${esc(query)}"</div>`;
   } else {
+    const re = new RegExp(query.replace(/[.*+?^${}()|[\]\\]/g, '\\$&'), 'gi');
     dd.innerHTML = matches.map((m, i) => {
-      const snip = sdHighlight(esc(m.snippet), esc(query));
+      const snip = esc(m.snippet).replace(
+        new RegExp(esc(query).replace(/[.*+?^${}()|[\]\\]/g, '\\$&'), 'gi'),
+        s => `<mark>${s}</mark>`
+      );
       return `<div class="sd-item" data-idx="${i}" onclick="jumpToMatch(${i})">
         <span class="sd-page">p.${m.page}</span>
         <span class="sd-snippet">${snip}</span>
       </div>`;
     }).join('');
   }
-  openDropdown();
+  dd.classList.add('open');
   _sdSelected = -1;
 }
 
-function updateSelection(idx) {
-  const items = document.querySelectorAll('#searchDropdown .sd-item');
-  items.forEach((el, i) => el.classList.toggle('sd-active', i === idx));
-  if (items[idx]) items[idx].scrollIntoView({ block: 'nearest' });
+function updateSdSelection(idx) {
+  document.querySelectorAll('#searchDropdown .sd-item').forEach((el, i) => {
+    el.classList.toggle('sd-active', i === idx);
+    if (i === idx) el.scrollIntoView({ block: 'nearest' });
+  });
 }
 
 document.getElementById('searchInput').addEventListener('input', e => {
   clearTimeout(searchDebounce);
   const q = e.target.value.trim();
   if (q.length < 2) {
-    activeSearchQuery = '';
-    _searchMatches = [];
-    refreshHighlights();
-    closeSearch();
-    return;
+    activeSearchQuery = ''; _searchMatches = [];
+    refreshHighlights(); closeSearch(); return;
   }
   searchDebounce = setTimeout(() => {
     const lq = q.toLowerCase();
@@ -1142,7 +1241,6 @@ document.getElementById('searchInput').addEventListener('input', e => {
       }
     }
     _searchMatches = matches;
-    // Only highlight the exact searched phrase on canvas, not every word containing it
     activeSearchQuery = q;
     refreshHighlights();
     renderDropdown(matches, q);
@@ -1154,33 +1252,27 @@ document.getElementById('searchInput').addEventListener('keydown', e => {
   if (e.key === 'ArrowDown') {
     e.preventDefault();
     _sdSelected = Math.min(_sdSelected + 1, items.length - 1);
-    updateSelection(_sdSelected);
+    updateSdSelection(_sdSelected);
   } else if (e.key === 'ArrowUp') {
     e.preventDefault();
     _sdSelected = Math.max(_sdSelected - 1, 0);
-    updateSelection(_sdSelected);
+    updateSdSelection(_sdSelected);
   } else if (e.key === 'Enter') {
     e.preventDefault();
     if (_sdSelected >= 0 && _searchMatches[_sdSelected]) {
       jumpToMatch(_sdSelected);
     } else if (_searchMatches.length) {
-      // Jump to nearest match to current spread
-      const currentPage = currentSpread + 1;
-      const nearest = _searchMatches.reduce((best, m) =>
-        Math.abs(m.page - currentPage) < Math.abs(best.page - currentPage) ? m : best
-      );
+      const cur = currentSpread + 1;
+      const nearest = _searchMatches.reduce((b, m) =>
+        Math.abs(m.page - cur) < Math.abs(b.page - cur) ? m : b);
       jumpToMatch(_searchMatches.indexOf(nearest));
     }
   } else if (e.key === 'Escape') {
-    activeSearchQuery = '';
-    _searchMatches = [];
-    refreshHighlights();
-    closeSearch();
-    e.target.blur();
+    activeSearchQuery = ''; _searchMatches = [];
+    refreshHighlights(); closeSearch(); e.target.blur();
   }
 });
 
-// Close dropdown when clicking outside
 document.addEventListener('click', e => {
   const wrap = document.getElementById('searchWrap');
   if (wrap && !wrap.contains(e.target)) closeSearch();
