@@ -38,14 +38,12 @@ header.hidden-ui { opacity: 0; pointer-events: none; transform: translateY(-8px)
 .header-right { display: flex; align-items: center; gap: 12px; }
 #pageInfo { font-size: 0.8rem; color: var(--muted); font-variant-numeric: tabular-nums; white-space: nowrap; }
 
-/* Share button in header */
 #shareBtn {
   display: none; align-items: center; gap: 7px;
   background: transparent; border: 1px solid var(--border);
   color: var(--muted); border-radius: 40px; padding: 6px 14px;
   font-family: 'DM Sans', sans-serif; font-size: 0.82rem; cursor: pointer;
-  transition: border-color 0.2s, color 0.2s, background 0.2s;
-  white-space: nowrap;
+  transition: border-color 0.2s, color 0.2s, background 0.2s; white-space: nowrap;
 }
 #shareBtn:hover { border-color: var(--accent); color: var(--accent); background: rgba(200,169,110,0.06); }
 #shareBtn.uploading { opacity: 0.6; cursor: default; pointer-events: none; }
@@ -101,7 +99,7 @@ header.hidden-ui { opacity: 0; pointer-events: none; transform: translateY(-8px)
   position: relative;
 }
 
-/* Share result banner (shown after successful upload) */
+/* Share result banner */
 #shareBanner {
   display: none;
   position: absolute; top: 12px; left: 50%; transform: translateX(-50%);
@@ -109,8 +107,7 @@ header.hidden-ui { opacity: 0; pointer-events: none; transform: translateY(-8px)
   border: 1px solid rgba(200,169,110,0.3);
   border-radius: 12px; padding: 0.7rem 1.1rem;
   width: min(860px, 92vw); align-items: center; gap: 10px; flex-wrap: wrap;
-  z-index: 50;
-  transition: opacity 0.3s;
+  z-index: 50; transition: opacity 0.3s;
 }
 #shareBanner.hidden-ui { opacity: 0; pointer-events: none; }
 .share-label { font-size: 0.78rem; color: var(--muted); flex-shrink: 0; }
@@ -119,43 +116,40 @@ header.hidden-ui { opacity: 0; pointer-events: none; transform: translateY(-8px)
 .copy-btn:hover { border-color: var(--accent); color: var(--accent); }
 .copy-btn.copied { border-color: #4a9; color: #4a9; }
 
-/* Book stage — no perspective/3D */
+/* Book stage */
 .book-stage {
   display: flex; align-items: center; justify-content: center;
   flex: 1; width: 100%; padding: 16px 12px 0;
 }
-
 .book-container {
   width: min(860px, 96vw);
   height: min(calc(100vh - 62px - 130px), 560px);
   min-height: 260px;
   position: relative; display: flex; align-items: stretch;
-  border-radius: 4px;
-  overflow: hidden;
+  border-radius: 4px; overflow: hidden;
   box-shadow: 0 8px 40px rgba(0,0,0,0.5);
 }
-
-/* No spine, no half-shadows — just two flat pages side by side */
 .page-half { width: 50%; height: 100%; position: relative; overflow: hidden; }
 .page-half.left { cursor: pointer; border-radius: 4px 0 0 4px; border-right: 1px solid rgba(0,0,0,0.08); }
 .page-half.right { cursor: pointer; border-radius: 0 4px 4px 0; }
+
+/* Canvas wrapper — lets highlight overlay sit on top */
+.canvas-wrap { position: relative; width: 100%; height: 100%; }
 .page-canvas { width: 100% !important; height: 100% !important; object-fit: contain; background: var(--page-bg); display: block; }
+/* Highlight overlay canvas — drawn on top of page canvas */
+.hl-canvas { position: absolute; top: 0; left: 0; width: 100% !important; height: 100% !important; pointer-events: none; }
 
 @keyframes flip-forward  { 0% { transform: rotateY(0deg); } 100% { transform: rotateY(-180deg); } }
 @keyframes flip-backward { 0% { transform: rotateY(0deg); } 100% { transform: rotateY(180deg); } }
 
-/* Ghost peek button */
+/* Ghost peek */
 #uiPeek {
   position: absolute; bottom: 18px; left: 50%; transform: translateX(-50%);
   background: rgba(255,255,255,0.06); border: 1px solid rgba(255,255,255,0.1);
-  backdrop-filter: blur(6px); border-radius: 40px;
-  padding: 7px 18px; cursor: pointer; color: rgba(255,255,255,0.45);
-  font-size: 0.75rem; font-family: 'DM Sans', sans-serif;
+  backdrop-filter: blur(6px); border-radius: 40px; padding: 7px 18px; cursor: pointer;
+  color: rgba(255,255,255,0.45); font-size: 0.75rem; font-family: 'DM Sans', sans-serif;
   display: flex; align-items: center; gap: 6px;
-  opacity: 0; pointer-events: none;
-  transition: opacity 0.25s;
-  z-index: 60;
-  white-space: nowrap;
+  opacity: 0; pointer-events: none; transition: opacity 0.25s; z-index: 60; white-space: nowrap;
 }
 #uiPeek.visible { opacity: 1; pointer-events: auto; }
 #uiPeek svg { opacity: 0.6; }
@@ -166,34 +160,24 @@ header.hidden-ui { opacity: 0; pointer-events: none; transform: translateY(-8px)
   background: linear-gradient(to top, rgba(12,11,9,0.97) 60%, transparent);
   padding: 28px 0 14px;
   display: flex; flex-direction: column; align-items: center; gap: 10px;
-  transform: translateY(100%);
-  transition: transform 0.32s cubic-bezier(0.4,0,0.2,1), opacity 0.3s;
-  opacity: 0;
-  z-index: 55;
+  transform: translateY(100%); transition: transform 0.32s cubic-bezier(0.4,0,0.2,1), opacity 0.3s;
+  opacity: 0; z-index: 55;
 }
 #controlsBar.visible { transform: translateY(0); opacity: 1; }
-
 .controls-row { display: flex; align-items: center; gap: 10px; }
 .ctrl-btn { width: 40px; height: 40px; border-radius: 50%; background: rgba(255,255,255,0.07); border: 1px solid rgba(255,255,255,0.1); color: var(--text); display: flex; align-items: center; justify-content: center; cursor: pointer; transition: background 0.2s, border-color 0.2s, transform 0.1s; flex-shrink: 0; }
 .ctrl-btn:hover:not(:disabled) { background: rgba(255,255,255,0.13); border-color: var(--accent); color: var(--accent); }
 .ctrl-btn:active:not(:disabled) { transform: scale(0.92); }
 .ctrl-btn:disabled { opacity: 0.25; cursor: default; }
-
 .ctrl-btn.tts-btn.speaking { border-color: var(--accent); color: var(--accent); background: rgba(200,169,110,0.1); }
-.ctrl-btn.tts-btn.speaking::after {
-  content: ''; position: absolute; inset: -4px; border-radius: 50%;
-  border: 1.5px solid rgba(200,169,110,0.4);
-  animation: pulse-ring 1.4s ease-out infinite;
-}
+.ctrl-btn.tts-btn.speaking::after { content: ''; position: absolute; inset: -4px; border-radius: 50%; border: 1.5px solid rgba(200,169,110,0.4); animation: pulse-ring 1.4s ease-out infinite; }
 .ctrl-btn.tts-active { border-color: var(--accent); color: var(--accent); background: rgba(200,169,110,0.08); }
 @keyframes pulse-ring { 0% { transform: scale(1); opacity: 0.6; } 100% { transform: scale(1.5); opacity: 0; } }
-
 .page-slider-wrap { display: flex; align-items: center; gap: 10px; width: min(320px, 60vw); }
 .page-num-display { font-size: 0.78rem; color: var(--muted); min-width: 70px; text-align: center; font-variant-numeric: tabular-nums; }
 #pageSlider { -webkit-appearance: none; width: 100%; height: 3px; background: rgba(255,255,255,0.12); border-radius: 2px; outline: none; cursor: pointer; }
 #pageSlider::-webkit-slider-thumb { -webkit-appearance: none; width: 13px; height: 13px; border-radius: 50%; background: var(--accent); cursor: pointer; transition: transform 0.15s; }
 #pageSlider::-webkit-slider-thumb:hover { transform: scale(1.3); }
-
 .key-hint { font-size: 0.7rem; color: rgba(255,255,255,0.2); }
 kbd { display: inline-block; background: rgba(255,255,255,0.06); border: 1px solid rgba(255,255,255,0.1); border-radius: 3px; padding: 1px 5px; font-size: 0.68rem; font-family: 'DM Sans', sans-serif; }
 
@@ -227,8 +211,7 @@ kbd { display: inline-block; background: rgba(255,255,255,0.06); border: 1px sol
   border-radius: 40px; padding: 5px 14px 5px 10px;
   font-size: 0.8rem; color: var(--accent);
   display: none; align-items: center; gap: 10px;
-  z-index: 60; transition: opacity 0.3s;
-  max-width: 280px;
+  z-index: 60; transition: opacity 0.3s; max-width: 280px;
 }
 #ttsChip.hidden-ui { opacity: 0; pointer-events: none; }
 #ttsLabel { font-variant-numeric: tabular-nums; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; max-width: 180px; font-weight: 500; }
@@ -248,13 +231,11 @@ kbd { display: inline-block; background: rgba(255,255,255,0.06); border: 1px sol
   position: absolute; bottom: 130px; left: 50%;
   transform: translateX(-50%) translateY(12px);
   width: min(360px, 88vw);
-  background: rgba(22,20,17,0.97);
-  border: 1px solid rgba(200,169,110,0.2);
+  background: rgba(22,20,17,0.97); border: 1px solid rgba(200,169,110,0.2);
   border-radius: 18px; padding: 1.2rem 1.4rem;
   z-index: 70; opacity: 0; pointer-events: none;
   transition: opacity 0.2s, transform 0.2s;
-  backdrop-filter: blur(16px);
-  box-shadow: 0 8px 40px rgba(0,0,0,0.6);
+  backdrop-filter: blur(16px); box-shadow: 0 8px 40px rgba(0,0,0,0.6);
 }
 #ttsSettingsPanel.open { opacity: 1; pointer-events: auto; transform: translateX(-50%) translateY(0); }
 .tts-panel-title { font-size: 0.72rem; font-weight: 500; color: var(--accent); letter-spacing: 0.08em; text-transform: uppercase; margin-bottom: 1rem; }
@@ -283,7 +264,6 @@ kbd { display: inline-block; background: rgba(255,255,255,0.06); border: 1px sol
   </div>
   <div class="header-right">
     <span id="pageInfo"></span>
-    <!-- Share button — only visible in book view -->
     <button id="shareBtn" onclick="triggerShare()">
       <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="18" cy="5" r="3"/><circle cx="6" cy="12" r="3"/><circle cx="18" cy="19" r="3"/><line x1="8.59" y1="13.51" x2="15.42" y2="17.49"/><line x1="15.41" y1="6.51" x2="8.59" y2="10.49"/></svg>
       Share
@@ -295,7 +275,7 @@ kbd { display: inline-block; background: rgba(255,255,255,0.06); border: 1px sol
 <div id="uploadScreen">
   <div class="upload-hero">
     <h1>Turn your PDF into a<br><em>living book</em></h1>
-    <p>Page-turn animations · Full-text search · Stays local unless you share</p>
+    <p>Page-turn animations · Full-text search · Canvas highlights · TTS word tracking</p>
   </div>
   <div class="drop-zone" id="dropZone">
     <div class="drop-icon">
@@ -314,7 +294,7 @@ kbd { display: inline-block; background: rgba(255,255,255,0.06); border: 1px sol
   <p style="color:var(--muted);font-size:0.9rem;" id="loadingMsg">Loading book…</p>
 </div>
 
-<!-- Progress (rendering pages locally — no upload step) -->
+<!-- Progress -->
 <div id="progressScreen">
   <div class="progress-ring">
     <svg width="80" height="80" viewBox="0 0 80 80">
@@ -333,7 +313,6 @@ kbd { display: inline-block; background: rgba(255,255,255,0.06); border: 1px sol
 <!-- Book Viewer -->
 <div id="bookViewer">
 
-  <!-- Share result banner (shown after successful upload) -->
   <div id="shareBanner">
     <span class="share-label">Shareable link</span>
     <div class="share-url" id="shareUrl"></div>
@@ -341,32 +320,34 @@ kbd { display: inline-block; background: rgba(255,255,255,0.06); border: 1px sol
     <button class="btn-secondary" style="font-size:0.78rem;padding:4px 10px;" onclick="document.getElementById('shareBanner').style.display='none'">×</button>
   </div>
 
-  <!-- TTS chip -->
   <div id="ttsChip">
     <div class="tts-wave"><div class="tts-bar"></div><div class="tts-bar"></div><div class="tts-bar"></div></div>
     <span id="ttsLabel">Reading…</span>
     <button onclick="stopTTS()" style="background:none;border:none;color:var(--accent);cursor:pointer;font-size:0.9rem;line-height:1;padding:0 0 0 4px;">×</button>
   </div>
 
-  <!-- Book — flat two-page spread, no 3D/spine -->
   <div class="book-stage">
     <div class="book-container" id="bookContainer">
       <div class="page-half left" id="leftHalf">
-        <canvas id="leftCanvas" class="page-canvas"></canvas>
+        <div class="canvas-wrap">
+          <canvas id="leftCanvas" class="page-canvas"></canvas>
+          <canvas id="leftHL" class="hl-canvas"></canvas>
+        </div>
       </div>
       <div class="page-half right" id="rightHalf">
-        <canvas id="rightCanvas" class="page-canvas"></canvas>
+        <div class="canvas-wrap">
+          <canvas id="rightCanvas" class="page-canvas"></canvas>
+          <canvas id="rightHL" class="hl-canvas"></canvas>
+        </div>
       </div>
     </div>
   </div>
 
-  <!-- Ghost peek -->
   <div id="uiPeek" onclick="showControls()">
     <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="18 15 12 9 6 15"/></svg>
     Show controls
   </div>
 
-  <!-- Floating controls -->
   <div id="controlsBar">
     <div class="thumb-tray" id="thumbTray"></div>
     <div class="controls-row">
@@ -403,7 +384,6 @@ kbd { display: inline-block; background: rgba(255,255,255,0.06); border: 1px sol
     <p class="key-hint"><kbd>←</kbd> <kbd>→</kbd> flip &nbsp;·&nbsp; <kbd>F</kbd> search &nbsp;·&nbsp; <kbd>Space</kbd> read aloud &nbsp;·&nbsp; <kbd>Esc</kbd> hide controls</p>
   </div>
 
-  <!-- TTS Settings Panel -->
   <div id="ttsSettingsPanel">
     <div class="tts-panel-title">🔊 Read Aloud Settings</div>
     <div class="tts-speed-row">
@@ -444,27 +424,36 @@ pdfjsLib.GlobalWorkerOptions.workerSrc =
   'https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.worker.min.js';
 
 let pdfDoc = null, totalPages = 0, currentSpread = 0;
-let pageImages = [], pageTexts = [], isFlipping = false;
+let pageImages = [], pageTexts = [], pageTextItems = [];
+let isFlipping = false;
 let currentSlug = null;
-let pendingArrayBuffer = null; // kept in memory for deferred upload
+let pendingArrayBuffer = null, pendingFilename = '';
+
+// Per-page: array of {str, transform, width, height} from PDF.js
+// transform = [a,b,c,d,e,f] where e=x, f=y in PDF coords
 
 // ── ROUTING ──
 window.addEventListener('DOMContentLoaded', () => {
-  const m = location.pathname.match(/^\/book\/([a-z0-9]+)/);
+  const m = location.pathname.match(/^\/book\/([a-z0-9]+)/i);
   if (m) loadFromSlug(m[1]);
 });
 
 async function loadFromSlug(slug) {
   show('loadingScreen');
+  document.getElementById('loadingMsg').textContent = 'Resolving link…';
   try {
-    const res = await fetch(`/api/resolve?slug=${slug}`);
-    if (!res.ok) throw new Error();
+    // Try the resolve API
+    const res = await fetch('/api/resolve?slug=' + encodeURIComponent(slug));
+    if (!res.ok) throw new Error('resolve failed: ' + res.status);
     const { url } = await res.json();
+    document.getElementById('loadingMsg').textContent = 'Fetching PDF…';
     const buf = await (await fetch(url)).arrayBuffer();
     currentSlug = slug;
     await processPDF(buf);
-  } catch {
-    show('uploadScreen'); showToast('Could not load book — link may be expired');
+  } catch(err) {
+    console.warn('loadFromSlug error:', err);
+    show('uploadScreen');
+    showToast('Could not load book — the link may have expired or the server is unavailable');
   }
 }
 
@@ -477,6 +466,7 @@ dropZone.addEventListener('drop', e => {
   e.preventDefault(); dropZone.classList.remove('drag-over');
   const f = e.dataTransfer.files[0];
   if (f?.type === 'application/pdf') handleFile(f);
+  else showToast('Please drop a PDF file');
 });
 fileInput.addEventListener('change', e => { if (e.target.files[0]) handleFile(e.target.files[0]); });
 document.getElementById('logoHome').addEventListener('click', () => {
@@ -489,25 +479,22 @@ async function handleFile(file) {
   let arrayBuffer;
   try { arrayBuffer = await file.arrayBuffer(); }
   catch { show('uploadScreen'); showToast('Could not read file'); return; }
-
-  // Store for optional later upload — do NOT upload now
   pendingArrayBuffer = arrayBuffer.slice();
   pendingFilename = file.name;
-
   setStep(2);
   await processPDF(arrayBuffer);
 }
 
-let pendingFilename = '';
-
 async function processPDF(arrayBuffer) {
   pdfDoc = await pdfjsLib.getDocument({ data: arrayBuffer }).promise;
   totalPages = pdfDoc.numPages;
-  pageImages = new Array(totalPages + 1).fill(null);
-  pageTexts  = new Array(totalPages + 1).fill('');
+  pageImages   = new Array(totalPages + 1).fill(null);
+  pageTexts    = new Array(totalPages + 1).fill('');
+  pageTextItems = new Array(totalPages + 1).fill(null);
   for (let i = 1; i <= totalPages; i++) {
     await renderPageToImage(i);
     updateProgress(i, totalPages);
+    document.getElementById('progressText').textContent = `Page ${i} of ${totalPages}`;
   }
   await sleep(200);
   showBook();
@@ -520,9 +507,19 @@ async function renderPageToImage(n) {
   const ctx = offscreen.getContext('2d');
   ctx.fillStyle = '#faf8f4'; ctx.fillRect(0, 0, viewport.width, viewport.height);
   await page.render({ canvasContext: ctx, viewport }).promise;
-  pageImages[n] = offscreen;
+  pageImages[n] = { canvas: offscreen, viewport };
   const tc = await page.getTextContent();
   pageTexts[n] = tc.items.map(i => i.str).join(' ');
+  // Store text items with their PDF-space bounding boxes
+  // Each item: { str, x, y, w, h } in viewport (scaled) coords
+  pageTextItems[n] = tc.items.map(item => {
+    const [a,b,c,d,e,f] = item.transform;
+    // Apply viewport transform to get canvas coords
+    const pt = viewport.convertToViewportPoint(e, f);
+    const fontH = Math.sqrt(a*a + b*b) * viewport.scale;
+    const fontW = item.width * viewport.scale;
+    return { str: item.str, x: pt[0], y: pt[1] - fontH, w: fontW, h: fontH * 1.2 };
+  });
 }
 
 function updateProgress(done, total) {
@@ -550,24 +547,25 @@ function showBook() {
 }
 
 function resetToHome() {
-  stopTTS();
+  stopTTS(); clearSearchHighlights();
   pdfDoc = null; totalPages = 0; currentSpread = 0;
-  pageImages = []; pageTexts = []; currentSlug = null;
+  pageImages = []; pageTexts = []; pageTextItems = []; currentSlug = null;
   pendingArrayBuffer = null; pendingFilename = '';
+  activeSearchQuery = '';
   document.getElementById('searchWrap').style.display = 'none';
   document.getElementById('shareBtn').style.display = 'none';
   document.getElementById('pageInfo').textContent = '';
   document.getElementById('thumbTray').innerHTML = '';
   document.getElementById('shareBanner').style.display = 'none';
-  history.replaceState(null, '', '/');
+  document.getElementById('searchInput').value = '';
+  history.replaceState(null, '', location.pathname.includes('/book/') ? '/' : location.pathname);
   show('uploadScreen');
 }
 
-// ── SHARE (deferred upload) ──
+// ── SHARE ──
 async function triggerShare() {
   const btn = document.getElementById('shareBtn');
   if (btn.classList.contains('done')) {
-    // Already have a link — just show the banner again
     document.getElementById('shareBanner').style.display = 'flex';
     document.getElementById('shareBanner').classList.remove('hidden-ui');
     return;
@@ -578,13 +576,12 @@ async function triggerShare() {
   }
   btn.classList.add('uploading');
   btn.innerHTML = `<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="animation:spin 0.8s linear infinite"><path d="M21 12a9 9 0 1 1-6.219-8.56"/></svg> Uploading…`;
-
   try {
     const res = await fetch('/api/upload-url', {
       method: 'POST', headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ filename: pendingFilename, contentType: 'application/pdf' })
     });
-    if (!res.ok) throw new Error('upload-url failed');
+    if (!res.ok) throw new Error('upload-url failed: ' + res.status);
     const { slug, uploadUrl, publicUrl, headers } = await res.json();
     await fetch(uploadUrl, { method: 'PUT', headers, body: pendingArrayBuffer.slice() });
     await fetch('/api/register', {
@@ -592,7 +589,7 @@ async function triggerShare() {
       body: JSON.stringify({ slug, url: publicUrl })
     });
     currentSlug = slug;
-    pendingArrayBuffer = null; // free memory
+    pendingArrayBuffer = null;
     const shareLink = `${location.origin}/book/${slug}`;
     history.replaceState(null, '', `/book/${slug}`);
     document.getElementById('shareUrl').textContent = shareLink;
@@ -602,15 +599,15 @@ async function triggerShare() {
     btn.classList.add('done');
     btn.innerHTML = `<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="20 6 9 17 4 12"/></svg> Shared`;
   } catch (err) {
+    console.error('Share error:', err);
     btn.classList.remove('uploading');
     btn.innerHTML = `<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="18" cy="5" r="3"/><circle cx="6" cy="12" r="3"/><circle cx="18" cy="19" r="3"/><line x1="8.59" y1="13.51" x2="15.42" y2="17.49"/><line x1="15.41" y1="6.51" x2="8.59" y2="10.49"/></svg> Share`;
-    showToast('Upload failed — check your connection');
+    showToast('Upload failed — check your server configuration');
   }
 }
 
 // ── IMMERSIVE UI ──
 let uiHideTimer = null, controlsVisible = false;
-
 function showControls() {
   controlsVisible = true;
   document.getElementById('controlsBar').classList.add('visible');
@@ -629,7 +626,6 @@ function scheduleHide(delay) {
   clearTimeout(uiHideTimer);
   if (controlsVisible) uiHideTimer = setTimeout(hideControls, delay || 3000);
 }
-
 document.addEventListener('mousemove', e => {
   if (!pdfDoc) return;
   const fromBottom = window.innerHeight - e.clientY;
@@ -639,7 +635,6 @@ document.addEventListener('mousemove', e => {
   if (fromBottom < 40) { showControls(); scheduleHide(3000); }
   if (controlsVisible) scheduleHide(3000);
 });
-
 document.addEventListener('keydown', e => {
   if (!pdfDoc) return;
   if (e.target === document.getElementById('searchInput')) return;
@@ -661,19 +656,110 @@ function drawPageOnCanvas(canvas, pageNum) {
   const { width, height } = canvas;
   ctx.fillStyle = '#faf8f4'; ctx.fillRect(0, 0, width, height);
   if (pageNum && pageImages[pageNum]) {
-    const img = pageImages[pageNum];
+    const img = pageImages[pageNum].canvas;
     const scale = Math.min(width / img.width, height / img.height);
     const dw = img.width * scale, dh = img.height * scale;
-    ctx.drawImage(img, (width - dw) / 2, (height - dh) / 2, dw, dh);
+    const dx = (width - dw) / 2, dy = (height - dh) / 2;
+    ctx.drawImage(img, dx, dy, dw, dh);
     ctx.fillStyle = 'rgba(100,95,88,0.38)';
-    ctx.font = '11px DM Sans, sans-serif';
-    ctx.textAlign = 'center';
+    ctx.font = '11px DM Sans, sans-serif'; ctx.textAlign = 'center';
     ctx.fillText(String(pageNum), width / 2, height - 8);
   }
 }
 function clearCanvas(c) {
   const ctx = c.getContext('2d');
   ctx.fillStyle = '#faf8f4'; ctx.fillRect(0, 0, c.width, c.height);
+}
+
+// ─── HIGHLIGHT OVERLAY ───
+// activeSearchQuery drives search highlights; ttsCurrentWord drives TTS highlight
+let activeSearchQuery = '';
+let ttsCurrentWord = '';
+let ttsCurrentPageNum = null;
+
+function getPageDrawTransform(canvas, pageNum) {
+  if (!pageNum || !pageImages[pageNum]) return null;
+  const img = pageImages[pageNum].canvas;
+  const scale = Math.min(canvas.width / img.width, canvas.height / img.height);
+  const dw = img.width * scale, dh = img.height * scale;
+  const dx = (canvas.width - dw) / 2, dy = (canvas.height - dh) / 2;
+  return { dx, dy, scale, imgW: img.width, imgH: img.height };
+}
+
+function drawHighlights(hlCanvas, pageNum, searchQuery, ttsWord) {
+  hlCanvas.width = hlCanvas.offsetWidth || hlCanvas.parentElement.offsetWidth || 430;
+  hlCanvas.height = hlCanvas.offsetHeight || hlCanvas.parentElement.offsetHeight || 520;
+  const ctx = hlCanvas.getContext('2d');
+  ctx.clearRect(0, 0, hlCanvas.width, hlCanvas.height);
+  if (!pageNum || !pageTextItems[pageNum]) return;
+  const t = getPageDrawTransform(hlCanvas, pageNum);
+  if (!t) return;
+  const items = pageTextItems[pageNum];
+  const imgViewport = pageImages[pageNum].viewport;
+  // Scale from viewport (OffscreenCanvas) coords → display canvas coords
+  const vScale = t.scale;
+  const vDx = t.dx, vDy = t.dy;
+
+  // Search highlights
+  if (searchQuery && searchQuery.length >= 2) {
+    const lq = searchQuery.toLowerCase();
+    ctx.fillStyle = 'rgba(200,169,110,0.30)';
+    ctx.strokeStyle = 'rgba(200,169,110,0.70)';
+    ctx.lineWidth = 1;
+    for (const item of items) {
+      if (!item.str) continue;
+      if (item.str.toLowerCase().includes(lq)) {
+        const x = item.x * vScale + vDx;
+        const y = item.y * vScale + vDy;
+        const w = item.w * vScale;
+        const h = item.h * vScale;
+        ctx.beginPath();
+        ctx.roundRect ? ctx.roundRect(x, y, w, h, 2) : ctx.rect(x, y, w, h);
+        ctx.fill();
+        ctx.stroke();
+      }
+    }
+  }
+
+  // TTS word highlight
+  if (ttsWord && ttsCurrentPageNum === pageNum) {
+    const lw = ttsWord.toLowerCase().replace(/[^a-z0-9]/g, '');
+    ctx.fillStyle = 'rgba(232,201,138,0.45)';
+    ctx.strokeStyle = 'rgba(232,201,138,0.9)';
+    ctx.lineWidth = 1.5;
+    let found = false;
+    for (const item of items) {
+      if (found) break;
+      if (!item.str) continue;
+      const li = item.str.toLowerCase().replace(/[^a-z0-9]/g, '');
+      if (li.includes(lw) && lw.length > 2) {
+        const x = item.x * vScale + vDx;
+        const y = item.y * vScale + vDy;
+        const w = item.w * vScale;
+        const h = item.h * vScale;
+        ctx.beginPath();
+        ctx.roundRect ? ctx.roundRect(x, y, w, h, 3) : ctx.rect(x, y, w, h);
+        ctx.fill();
+        ctx.stroke();
+        found = true;
+      }
+    }
+  }
+}
+
+function refreshHighlights() {
+  const { left, right } = getSpreadPages(currentSpread);
+  const lHL = document.getElementById('leftHL');
+  const rHL = document.getElementById('rightHL');
+  lHL.width = lHL.offsetWidth || 430; lHL.height = lHL.offsetHeight || 520;
+  rHL.width = rHL.offsetWidth || 430; rHL.height = rHL.offsetHeight || 520;
+  drawHighlights(lHL, left, activeSearchQuery, ttsCurrentWord);
+  drawHighlights(rHL, right, activeSearchQuery, ttsCurrentWord);
+}
+
+function clearSearchHighlights() {
+  activeSearchQuery = '';
+  refreshHighlights();
 }
 
 async function drawSpread(spread, direction, onReady) {
@@ -686,7 +772,10 @@ async function drawSpread(spread, direction, onReady) {
   if (direction === 'none') {
     left ? drawPageOnCanvas(lc, left) : clearCanvas(lc);
     right ? drawPageOnCanvas(rc, right) : clearCanvas(rc);
-    updateUI(spread); if (onReady) onReady(); return;
+    updateUI(spread);
+    refreshHighlights();
+    if (onReady) onReady();
+    return;
   }
   if (isFlipping) return;
   isFlipping = true;
@@ -724,7 +813,11 @@ async function drawSpread(spread, direction, onReady) {
     left ? drawPageOnCanvas(lc, left) : clearCanvas(lc);
     right ? drawPageOnCanvas(rc, right) : clearCanvas(rc);
   }, 200);
-  flipEl.addEventListener('animationend', () => { flipEl.remove(); isFlipping = false; updateUI(spread); if (onReady) onReady(); });
+  flipEl.addEventListener('animationend', () => {
+    flipEl.remove(); isFlipping = false; updateUI(spread);
+    refreshHighlights();
+    if (onReady) onReady();
+  });
 }
 
 function updateUI(spread) {
@@ -781,7 +874,8 @@ document.getElementById('leftHalf').addEventListener('click', () => { if (!isFli
 
 // ── TTS ──
 let ttsSpeaking = false, ttsUtterance = null, ttsRate = 0.95, ttsVoice = null;
-let ttsSettingsOpen = false, ttsWords = [], ttsWordIndex = 0, ttsHighlightTimer = null;
+let ttsSettingsOpen = false;
+let ttsHighlightTimer = null;
 
 function populateVoices() {
   const sel = document.getElementById('voiceSelect');
@@ -813,7 +907,8 @@ document.getElementById('voiceSelect').addEventListener('change', e => {
   if (!isNaN(saved) && saved >= 0.5 && saved <= 2) {
     ttsRate = saved;
     document.getElementById('ttsSpeedSlider').value = saved;
-    document.getElementById('ttsSpeedVal').textContent = ttsRate === Math.round(ttsRate) ? ttsRate + '×' : ttsRate.toFixed(2) + '×';
+    const label = ttsRate === Math.round(ttsRate) ? ttsRate + '×' : ttsRate.toFixed(2) + '×';
+    document.getElementById('ttsSpeedVal').textContent = label;
     updateSpeedChips();
   }
 })();
@@ -866,27 +961,6 @@ function getSpreadText() {
   return text.trim();
 }
 
-function startWordHighlight(text, totalDuration) {
-  const words = text.split(/\s+/).filter(Boolean);
-  ttsWords = words; ttsWordIndex = 0;
-  const totalChars = words.reduce((a, w) => a + w.length, 0);
-  function highlightNext() {
-    if (ttsWordIndex >= words.length || !ttsSpeaking) { clearTTSHighlight(); return; }
-    const word = words[ttsWordIndex];
-    const delay = Math.max(80, (word.length / totalChars) * totalDuration * 1000);
-    document.getElementById('ttsLabel').textContent = word;
-    ttsWordIndex++;
-    ttsHighlightTimer = setTimeout(highlightNext, delay);
-  }
-  highlightNext();
-}
-
-function clearTTSHighlight() {
-  clearTimeout(ttsHighlightTimer);
-  const { left, right } = getSpreadPages(currentSpread);
-  document.getElementById('ttsLabel').textContent = left && right ? `Reading pp. ${left}–${right}` : `Reading p. ${right || left}`;
-}
-
 function toggleTTS() {
   if (ttsSpeaking) { stopTTS(); return; }
   const text = getSpreadText();
@@ -900,11 +974,23 @@ function startTTS(text) {
   ttsUtterance = new SpeechSynthesisUtterance(text);
   ttsUtterance.rate = ttsRate; ttsUtterance.pitch = 1; ttsUtterance.lang = 'en-US';
   if (ttsVoice) ttsUtterance.voice = ttsVoice;
+
+  // Word boundary → update highlight on the PDF canvas
   ttsUtterance.onboundary = e => {
     if (e.name !== 'word') return;
-    const word = text.substr(e.charIndex, e.charLength || 8).trim();
-    if (word) document.getElementById('ttsLabel').textContent = word;
+    const word = text.substr(e.charIndex, e.charLength || 6).trim().replace(/[^a-zA-Z0-9']/g, '');
+    if (!word) return;
+    // Figure out which page the charIndex falls on
+    const { left, right } = getSpreadPages(currentSpread);
+    const leftLen = left ? (pageTexts[left] || '').trim().length : 0;
+    // charIndex into the combined text — left page is first
+    const onLeft = left && e.charIndex < leftLen;
+    ttsCurrentPageNum = onLeft ? left : right;
+    ttsCurrentWord = word;
+    document.getElementById('ttsLabel').textContent = word;
+    refreshHighlights();
   };
+
   ttsUtterance.onstart = () => {
     ttsSpeaking = true;
     document.getElementById('ttsBtn').classList.add('speaking');
@@ -912,13 +998,13 @@ function startTTS(text) {
     chip.style.display = 'flex';
     const { left, right } = getSpreadPages(currentSpread);
     document.getElementById('ttsLabel').textContent = left && right ? `Reading pp. ${left}–${right}` : `Reading p. ${right || left}`;
-    const estDuration = (text.length / 15) / ttsRate;
-    setTimeout(() => {
-      if (ttsSpeaking && document.getElementById('ttsLabel').textContent.startsWith('Reading')) startWordHighlight(text, estDuration);
-    }, 600);
+    ttsCurrentPageNum = right || left;
   };
+
   ttsUtterance.onend = () => {
     clearTimeout(ttsHighlightTimer);
+    ttsCurrentWord = '';
+    refreshHighlights();
     const max = totalPages % 2 === 0 ? totalPages - 2 : totalPages - 1;
     const nextSpread = currentSpread + 2;
     if (nextSpread <= max) {
@@ -929,12 +1015,14 @@ function startTTS(text) {
       });
     } else {
       ttsSpeaking = false;
+      ttsCurrentWord = '';
       document.getElementById('ttsBtn').classList.remove('speaking');
       document.getElementById('ttsChip').style.display = 'none';
     }
   };
   ttsUtterance.onerror = () => {
-    ttsSpeaking = false; clearTimeout(ttsHighlightTimer);
+    ttsSpeaking = false; ttsCurrentWord = '';
+    clearTimeout(ttsHighlightTimer);
     document.getElementById('ttsBtn').classList.remove('speaking');
     document.getElementById('ttsChip').style.display = 'none';
   };
@@ -943,9 +1031,11 @@ function startTTS(text) {
 
 function stopTTS() {
   window.speechSynthesis?.cancel();
-  ttsSpeaking = false; clearTimeout(ttsHighlightTimer);
+  ttsSpeaking = false; ttsCurrentWord = ''; ttsCurrentPageNum = null;
+  clearTimeout(ttsHighlightTimer);
   document.getElementById('ttsBtn').classList.remove('speaking');
   document.getElementById('ttsChip').style.display = 'none';
+  refreshHighlights();
 }
 
 // ── SEARCH ──
@@ -953,11 +1043,20 @@ let searchDebounce;
 document.getElementById('searchInput').addEventListener('input', e => {
   clearTimeout(searchDebounce);
   const q = e.target.value.trim();
-  if (q.length < 2) { closeSearch(); return; }
-  searchDebounce = setTimeout(() => doSearch(q), 200);
+  if (q.length < 2) {
+    activeSearchQuery = '';
+    refreshHighlights();
+    closeSearch();
+    return;
+  }
+  searchDebounce = setTimeout(() => {
+    activeSearchQuery = q;
+    refreshHighlights();
+    doSearch(q);
+  }, 200);
 });
 document.getElementById('searchInput').addEventListener('keydown', e => {
-  if (e.key === 'Escape') { closeSearch(); e.target.blur(); }
+  if (e.key === 'Escape') { activeSearchQuery = ''; refreshHighlights(); closeSearch(); e.target.blur(); }
 });
 
 function doSearch(query) {
@@ -985,9 +1084,17 @@ function highlight(text, q) {
   return text.replace(new RegExp('(' + q.replace(/[.*+?^${}()|[\]\\]/g, '\\$&') + ')', 'gi'), '<mark>$1</mark>');
 }
 function esc(s) { return s.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;'); }
-function jumpTo(p) { closeSearch(); goToSpread(p === 1 ? 0 : (p % 2 === 0 ? p : p - 1)); }
+function jumpTo(p) {
+  closeSearch();
+  goToSpread(p === 1 ? 0 : (p % 2 === 0 ? p : p - 1), undefined, () => refreshHighlights());
+}
 function closeSearch() { document.getElementById('searchOverlay').style.display = 'none'; }
-document.getElementById('closeSearch').addEventListener('click', closeSearch);
+document.getElementById('closeSearch').addEventListener('click', () => {
+  activeSearchQuery = '';
+  refreshHighlights();
+  closeSearch();
+  document.getElementById('searchInput').value = '';
+});
 
 // ── COPY ──
 function copyLink() {
@@ -1008,14 +1115,14 @@ function show(id) {
 function showToast(msg) {
   const t = document.getElementById('toast');
   t.textContent = msg; t.classList.add('show');
-  setTimeout(() => t.classList.remove('show'), 3000);
+  setTimeout(() => t.classList.remove('show'), 3500);
 }
 function sleep(ms) { return new Promise(r => setTimeout(r, ms)); }
 
 let resizeTimer;
 window.addEventListener('resize', () => {
   clearTimeout(resizeTimer);
-  resizeTimer = setTimeout(() => { if (pdfDoc) drawSpread(currentSpread, 'none'); }, 120);
+  resizeTimer = setTimeout(() => { if (pdfDoc) { drawSpread(currentSpread, 'none'); } }, 120);
 });
 </script>
 </body>
