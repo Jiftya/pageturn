@@ -1,0 +1,119 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Launcher</title>
+<style>
+  html, body { margin: 0; height: 100%; }
+  body { display: grid; place-items: center; background: #f6f7f9; font-family: system-ui, -apple-system, Segoe UI, sans-serif; }
+  button { padding: 14px 32px; font: inherit; font-size: 18px; font-weight: 600; color: #fff; background: #1f883d; border: 1px solid #1a7f37; border-radius: 8px; cursor: pointer; }
+  button:hover { background: #1a7f37; }
+  button:disabled { opacity: .6; cursor: default; }
+</style>
+</head>
+<body>
+<button id="launch">Launch</button>
+
+<script>
+// ===================== CONFIG =====================
+const CONFIG = {
+  // Any GitHub link: file (blob), folder (tree), repo, raw.githubusercontent.com, or gist
+  url: "https://github.com/Jiftya/testcosmos/blob/main/main.html",
+
+  // Load relative CSS/JS/images through jsDelivr so they work
+  fixAssets: true,
+
+  // Set to false to block all scripts in the launched page
+  allowScripts: true,
+
+  // Text on the button
+  buttonText: "WHOAH ASTRA WHOW",
+};
+// ==================================================
+
+function resolveGitHubUrl(input) {
+  const u = new URL(input.trim());
+  const parts = u.pathname.split("/").filter(Boolean);
+
+  if (u.hostname === "gist.github.com")
+    return { raw: `https://gist.githubusercontent.com/${parts[0]}/${parts[1]}/raw`, base: null };
+  if (u.hostname === "gist.githubusercontent.com")
+    return { raw: u.href, base: null };
+
+  let user, repo, ref, path;
+  if (u.hostname === "raw.githubusercontent.com") {
+    [user, repo] = parts;
+    let rest = parts.slice(2);
+    if (rest[0] === "refs" && rest[1] === "heads") rest = rest.slice(2);
+    ref = rest[0];
+    path = rest.slice(1).join("/");
+  } else if (u.hostname === "github.com" || u.hostname === "www.github.com") {
+    [user, repo] = parts;
+    if (parts[2] === "blob" || parts[2] === "raw" || parts[2] === "tree") {
+      ref = parts[3];
+      path = parts.slice(4).join("/");
+      if (parts[2] === "tree" || !path) path = (path ? path + "/" : "") + "index.html";
+    } else {
+      ref = "HEAD";
+      path = "index.html";
+    }
+  } else {
+    throw new Error("CONFIG.url must be a github.com, raw.githubusercontent.com or gist.github.com link.");
+  }
+
+  const raw = `https://raw.githubusercontent.com/${user}/${repo}/${ref}/${path}`;
+  const dir = path.includes("/") ? path.slice(0, path.lastIndexOf("/") + 1) : "";
+  const base = `https://cdn.jsdelivr.net/gh/${user}/${repo}${ref === "HEAD" ? "" : "@" + ref}/${dir}`;
+  return { raw, base };
+}
+
+function injectIntoHead(html, tag) {
+  if (/<head[^>]*>/i.test(html)) return html.replace(/<head[^>]*>/i, m => m + tag);
+  if (/<html[^>]*>/i.test(html)) return html.replace(/<html[^>]*>/i, m => m + "<head>" + tag + "</head>");
+  return tag + html;
+}
+
+function writeTo(w, html) {
+  w.document.open();
+  w.document.write(html);
+  w.document.close();
+}
+
+function showMessage(w, text, color) {
+  writeTo(w, `<!DOCTYPE html><title>${color ? "Error" : "Loading…"}</title><p style="font:14px system-ui;padding:16px;color:${color || "#59636e"}"></p>`);
+  w.document.querySelector("p").textContent = text;
+}
+
+const btn = document.getElementById("launch");
+btn.textContent = CONFIG.buttonText;
+
+btn.addEventListener("click", async () => {
+  // Open the tab during the click so pop-up blockers allow it
+  const w = window.open("about:blank", "_blank");
+  if (!w) return alert("Your browser blocked the new tab. Allow pop-ups for this page and try again.");
+  w.opener = null;
+  showMessage(w, "Loading…");
+
+  btn.disabled = true;
+  try {
+    const { raw, base } = resolveGitHubUrl(CONFIG.url);
+    const res = await fetch(raw);
+    if (!res.ok) throw new Error(`GitHub returned ${res.status} ${res.statusText} for ${raw}`);
+    let html = await res.text();
+
+    if (CONFIG.fixAssets && base && !/<base\s/i.test(html))
+      html = injectIntoHead(html, `<base href="${base}">`);
+    if (!CONFIG.allowScripts)
+      html = injectIntoHead(html, `<meta http-equiv="Content-Security-Policy" content="script-src 'none'">`);
+
+    writeTo(w, html);
+  } catch (e) {
+    showMessage(w, e.message || String(e), "#d1242f");
+  } finally {
+    btn.disabled = false;
+  }
+});
+</script>
+</body>
+</html>
