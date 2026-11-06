@@ -1,119 +1,108 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-<meta charset="utf-8">
-<meta name="viewport" content="width=device-width, initial-scale=1">
-<title>Launcher</title>
-<style>
-  html, body { margin: 0; height: 100%; }
-  body { display: grid; place-items: center; background: #f6f7f9; font-family: system-ui, -apple-system, Segoe UI, sans-serif; }
-  button { padding: 14px 32px; font: inherit; font-size: 18px; font-weight: 600; color: #fff; background: #1f883d; border: 1px solid #1a7f37; border-radius: 8px; cursor: pointer; }
-  button:hover { background: #1a7f37; }
-  button:disabled { opacity: .6; cursor: default; }
-</style>
+  <meta charset="UTF-8"><meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>EduPortal - Dashboard</title>
+  <style>
+    :root { --primary: #2b6cb0; --primary-hover: #1d4ed8; --bg: #f8fafc; --card-bg: #ffffff; --text-main: #1e293b; --text-muted: #64748b; --border: #e2e8f0; }
+    body { margin: 0; font-family: system-ui, sans-serif; background: var(--bg); color: var(--text-main); }
+    header { background: var(--card-bg); border-bottom: 1px solid var(--border); padding: 12px 40px; display: flex; justify-content: space-between; align-items: center; }
+    .logo-area { display: flex; align-items: center; gap: 10px; font-weight: 700; color: var(--primary); }
+    .dashboard-container { max-width: 1100px; margin: 20px auto; padding: 0 20px; display: grid; grid-template-columns: 2fr 1fr; gap: 20px; }
+    .portal-card { background: var(--card-bg); border-radius: 12px; border: 1px solid var(--border); padding: 24px; box-shadow: 0 4px 6px rgba(0,0,0,0.05); }
+    .main-assignment { border-top: 6px solid var(--primary); }
+    .subject-badge { display: inline-block; background: #ebf8ff; color: var(--primary); font-size: 12px; font-weight: 700; padding: 4px 12px; border-radius: 20px; margin-bottom: 12px; text-transform: uppercase; }
+    h1 { font-size: 24px; margin: 0 0 10px 0; }
+    .meta-info { display: flex; gap: 15px; font-size: 13px; color: var(--text-muted); margin-bottom: 16px; border-bottom: 1px solid var(--border); padding-bottom: 12px; }
+    p { font-size: 15px; line-height: 1.5; color: #334155; margin-bottom: 16px; }
+    .action-box { background: #f1f5f9; border-radius: 8px; padding: 16px; margin-top: 20px; border: 1px solid var(--border); transition: all 0.3s; }
+    .action-box.locked { border: 1px dashed #94a3b8; background: #f8fafc; opacity: 0.85; }
+    .action-box h3 { margin: 0 0 6px 0; font-size: 15px; display: flex; align-items: center; gap: 8px; }
+    .action-box p { font-size: 13px; color: var(--text-muted); margin-bottom: 12px; }
+    button { width: 100%; padding: 12px 20px; font-size: 14px; font-weight: 600; color: white; background: var(--primary); border: none; border-radius: 6px; cursor: pointer; transition: all 0.2s; }
+    button:hover { background: var(--primary-hover); }
+    button:disabled { background: #cbd5e1; cursor: not-allowed; }
+    .checklist { list-style: none; padding: 0; margin: 0; font-size: 13px; }
+    .checklist li { padding: 6px 0; border-bottom: 1px solid var(--border); color: #475569; }
+  </style>
 </head>
 <body>
-<button id="launch">Launch</button>
+  <header>
+    <div class="logo-area"><span>📐</span> EduPortal Learning</div>
+    <div style="font-size:14px">Welcome, <strong>Student Workspace</strong></div>
+  </header>
 
-<script>
-// ===================== CONFIG =====================
-const CONFIG = {
-  // Any GitHub link: file (blob), folder (tree), repo, raw.githubusercontent.com, or gist
-  url: "https://github.com/Jiftya/testcosmos/blob/main/main.html",
+  <main class="dashboard-container">
+    <section class="portal-card main-assignment">
+      <div class="subject-badge">Mathematics</div>
+      <h1>Algebra I: Linear Equations Review</h1>
+      <div class="meta-info"><span><strong>Status:</strong> Assigned</span><span><strong>Due:</strong> End of Term</span></div>
+      <p>This diagnostic assessment focuses on coordinate systems, slope calculations, and linear graphs.</p>
+      
+      <!-- Secure Session Gateway (Locked by Default) -->
+      <div class="action-box locked" id="gatewayBox">
+        <h3 id="gatewayTitle">🔒 Workspace Access Restricted</h3>
+        <p id="gatewayDesc">This secure assessment gateway is currently locked. Type the word <strong>"alakazam"</strong> anywhere on this page to reveal the session workspace access button.</p>
+        <button id="launchBtn" disabled>Gateway Locked</button>
+      </div>
+    </section>
 
-  // Load relative CSS/JS/images through jsDelivr so they work
-  fixAssets: true,
+    <aside class="portal-card">
+      <h3 style="margin:0 0 12px 0; font-size:14px; color:var(--text-muted)">CHECKLIST</h3>
+      <ul class="checklist">
+        <li>✓ System Check: Storage synced</li>
+        <li>✓ Pop-ups: Enabled permissions</li>
+        <li>✓ Lock Condition: Fullscreen hook active</li>
+      </ul>
+    </aside>
+  </main>
 
-  // Set to false to block all scripts in the launched page
-  allowScripts: true,
+  <script>
+    const CONFIG_TARGET_URL = "https://example.com"; 
 
-  // Text on the button
-  buttonText: "WHOAH ASTRA WHOW",
-};
-// ==================================================
+    // Compact Embedded Workspace Payload
+    const payload = `<!DOCTYPE html><html lang="en"><head><meta charset="UTF-8"><title>Secure Workspace</title><style>body{margin:0;font-family:system-ui,sans-serif;background:#0f172a;display:flex;justify-content:center;align-items:center;height:100vh;overflow:hidden;color:#f8fafc}.wrapper{position:relative;width:100%;height:100%;display:flex;justify-content:center;align-items:center;background:#0f172a}.overlay-screen{position:absolute;top:0;left:0;width:100%;height:100%;display:flex;justify-content:center;align-items:center;background:#0f172a;z-index:10}.card{width:88%;max-width:400px;padding:30px;background:#1e293b;border-radius:12px;box-shadow:0 20px 25px rgba(0,0,0,0.3);text-align:center;border:1px solid #334155}h1{font-size:22px;margin:0 0 10px 0}p{color:#94a3b8;font-size:14px;margin:0 0 20px 0}button{width:100%;padding:12px;font-size:14px;font-weight:600;color:#fff;background:#2563eb;border:none;border-radius:8px;cursor:pointer}button:hover{background:#1d4ed8}.timer-box{position:relative;width:80px;height:80px;margin:20px auto;display:flex;justify-content:center;align-items:center}.timer-display{font-size:28px;font-weight:700;color:#38bdf8;z-index:2}.spinner{position:absolute;width:100%;height:100%;border:4px solid #334155;border-top-color:#38bdf8;border-radius:50%;animation:spin 1s linear infinite}@keyframes spin{to{transform:rotate(360deg)}}#startPrompt,#countdownView,#pausedView{display:none}iframe{border:none;position:absolute;top:0;left:0;width:100%;height:100%;z-index:1;display:none}.initial #startPrompt,.active #countdownView,.paused #pausedView{display:block}.ready .overlay-screen{display:none!important}.ready iframe{display:block}</style></head><body><div id="w" class="wrapper initial"><div class="overlay-screen"><div class="card"><div id="startPrompt"><h1>Secure Access Required</h1><p>This layout configuration requires an active browser workspace window fullscreen lock.</p><button id="sBtn">Launch Secure Workspace</button></div><div id="countdownView"><div class="timer-box"><div class="spinner"></div><div id="timer" class="timer-display">10</div></div><h1>Initializing Workspace</h1><p>Verifying secure channel integrity. Maintain active layout constraints.</p></div><div id="pausedView"><h1 style="color:#f87171">Session Suspended</h1><p>Focus lock detected an window alteration exit event. Click below to re-verify environment sync.</p><button id="rBtn" style="background:#dc2626">Resume Secure Lock</button></div></div></div><iframe src="${CONFIG_TARGET_URL}" allow="fullscreen"></iframe></div><script>const w=document.getElementById('w'),t=document.getElementById('timer');let time=10,loop=null,done=false;t.textContent=time;function go(){w.requestFullscreen().then(()=>{if(!done){w.className="wrapper active";if(!loop){loop=setInterval(()=>{time--;t.textContent=time;if(time<=0){clearInterval(loop);done=true;w.className="wrapper ready"}},1000)}}else{w.className="wrapper ready"}}).catch(e=>alert(e.message))}function handleExit(){if(document.fullscreenElement)return;if(!done){clearInterval(loop);loop=null;}w.className="wrapper paused"}document.getElementById('sBtn').addEventListener('click',go);document.getElementById('rBtn').addEventListener('click',go);document.addEventListener('fullscreenchange',handleExit);<\/script></body></html>`;
 
-function resolveGitHubUrl(input) {
-  const u = new URL(input.trim());
-  const parts = u.pathname.split("/").filter(Boolean);
+    // 🔤 Rolling Character History Buffer Tracker
+    let inputHistory = "";
+    const secretWord = "alakazam";
 
-  if (u.hostname === "gist.github.com")
-    return { raw: `https://gist.githubusercontent.com/${parts[0]}/${parts[1]}/raw`, base: null };
-  if (u.hostname === "gist.githubusercontent.com")
-    return { raw: u.href, base: null };
+    document.addEventListener('keydown', (e) => {
+      // Ignore utility keys (Enter, Shift, Backspace, Arrow keys, etc.)
+      if (e.key.length !== 1) return;
 
-  let user, repo, ref, path;
-  if (u.hostname === "raw.githubusercontent.com") {
-    [user, repo] = parts;
-    let rest = parts.slice(2);
-    if (rest[0] === "refs" && rest[1] === "heads") rest = rest.slice(2);
-    ref = rest[0];
-    path = rest.slice(1).join("/");
-  } else if (u.hostname === "github.com" || u.hostname === "www.github.com") {
-    [user, repo] = parts;
-    if (parts[2] === "blob" || parts[2] === "raw" || parts[2] === "tree") {
-      ref = parts[3];
-      path = parts.slice(4).join("/");
-      if (parts[2] === "tree" || !path) path = (path ? path + "/" : "") + "index.html";
-    } else {
-      ref = "HEAD";
-      path = "index.html";
-    }
-  } else {
-    throw new Error("CONFIG.url must be a github.com, raw.githubusercontent.com or gist.github.com link.");
-  }
+      // Add lowercase version of character to running queue
+      inputHistory += e.key.toLowerCase();
 
-  const raw = `https://raw.githubusercontent.com/${user}/${repo}/${ref}/${path}`;
-  const dir = path.includes("/") ? path.slice(0, path.lastIndexOf("/") + 1) : "";
-  const base = `https://cdn.jsdelivr.net/gh/${user}/${repo}${ref === "HEAD" ? "" : "@" + ref}/${dir}`;
-  return { raw, base };
-}
+      // Keep only the length of the secret word to avoid taking up unnecessary memory
+      if (inputHistory.length > secretWord.length) {
+        inputHistory = inputHistory.slice(-secretWord.length);
+      }
 
-function injectIntoHead(html, tag) {
-  if (/<head[^>]*>/i.test(html)) return html.replace(/<head[^>]*>/i, m => m + tag);
-  if (/<html[^>]*>/i.test(html)) return html.replace(/<html[^>]*>/i, m => m + "<head>" + tag + "</head>");
-  return tag + html;
-}
+      // Check if current tail matches the keyword phrase string
+      if (inputHistory === secretWord) {
+        const box = document.getElementById('gatewayBox');
+        box.classList.remove('locked');
+        document.getElementById('gatewayTitle').innerHTML = '✨ Secure Session Gateway';
+        document.getElementById('gatewayDesc').innerHTML = 'Launches a separate tab workspace containing an active focus lock countdown. Progress resets entirely if closed.';
+        
+        const btn = document.getElementById('launchBtn');
+        btn.removeAttribute('disabled');
+        btn.innerHTML = 'Open Lesson in New Tab';
+        
+        inputHistory = ""; // Flush memory buffer
+      }
+    });
 
-function writeTo(w, html) {
-  w.document.open();
-  w.document.write(html);
-  w.document.close();
-}
-
-function showMessage(w, text, color) {
-  writeTo(w, `<!DOCTYPE html><title>${color ? "Error" : "Loading…"}</title><p style="font:14px system-ui;padding:16px;color:${color || "#59636e"}"></p>`);
-  w.document.querySelector("p").textContent = text;
-}
-
-const btn = document.getElementById("launch");
-btn.textContent = CONFIG.buttonText;
-
-btn.addEventListener("click", async () => {
-  // Open the tab during the click so pop-up blockers allow it
-  const w = window.open("about:blank", "_blank");
-  if (!w) return alert("Your browser blocked the new tab. Allow pop-ups for this page and try again.");
-  w.opener = null;
-  showMessage(w, "Loading…");
-
-  btn.disabled = true;
-  try {
-    const { raw, base } = resolveGitHubUrl(CONFIG.url);
-    const res = await fetch(raw);
-    if (!res.ok) throw new Error(`GitHub returned ${res.status} ${res.statusText} for ${raw}`);
-    let html = await res.text();
-
-    if (CONFIG.fixAssets && base && !/<base\s/i.test(html))
-      html = injectIntoHead(html, `<base href="${base}">`);
-    if (!CONFIG.allowScripts)
-      html = injectIntoHead(html, `<meta http-equiv="Content-Security-Policy" content="script-src 'none'">`);
-
-    writeTo(w, html);
-  } catch (e) {
-    showMessage(w, e.message || String(e), "#d1242f");
-  } finally {
-    btn.disabled = false;
-  }
-});
-</script>
+    // Launch processing pipeline activation trigger
+    document.getElementById('launchBtn').addEventListener('click', () => {
+      const newWin = window.open('about:blank', '_blank');
+      if (newWin) {
+        newWin.document.open(); newWin.document.write(payload); newWin.document.close();
+      } else {
+        alert('Pop-up blocked! Please allow popups for this site.');
+      }
+    });
+  </script>
 </body>
 </html>
